@@ -3,232 +3,206 @@
 <html lang="pl">
 <head>
     <title>AnimalLogic - Inteligentne Terrarium</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
     
     <meta name="theme-color" content="#101412"> 
     <link rel="manifest" href="/manifest.json">
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js');
-            });
+            window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
         }
     </script>
     <style>
         :root {
             --primary: #52b788;
-            --accent: #d8f3dc;
             --dark: #101412;
             --card-bg: #1c2420;
-            --text-main: #ffffff;
             --text-muted: #adb5bd;
             --gradient: linear-gradient(135deg, #52b788 0%, #2d6a4f 100%);
         }
 
         body { 
             background: var(--dark); 
-            color: var(--text-main); 
+            color: white; 
             font-family: 'Outfit', sans-serif; 
             margin: 0; 
             padding: 0;
-            overflow-x: hidden;
+            padding-bottom: 40px; /* Miejsce na dole na scroll */
         }
 
-        /* --- STYL DLA ZALOGOWANYCH (PANEL) --- */
-        .dashboard-container { max-width: 600px; margin: 20px auto; padding: 20px; }
-        .device-card { background: var(--card-bg); padding: 20px; border-radius: 16px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; transition: 0.3s; }
-        .device-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
-        .btn { background: var(--primary); color: white; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
-        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .status-online { background-color: var(--primary); box-shadow: 0 0 8px var(--primary); }
-        .status-offline { background-color: #e63946; }
-
-        /* --- STYL DLA LANDING PAGE (NIEZALOGOWANI) --- */
-        .landing-hero {
-            min-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 20px;
-            background: radial-gradient(circle at 50% 50%, #1c2420 0%, #101412 70%);
-            position: relative;
+        /* --- STYL DLA ZALOGOWANYCH (DASHBOARD) --- */
+        .dashboard-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px; background: rgba(16, 20, 18, 0.9);
+            backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100;
+            border-bottom: 1px solid #222;
         }
 
-        .landing-logo {
-            width: 120px;
-            margin-bottom: 20px;
-            animation: float 6s ease-in-out infinite;
+        .dashboard-container { max-width: 600px; margin: 0 auto; padding: 20px; }
+
+        .device-card { 
+            background: var(--card-bg); padding: 20px; border-radius: 16px; margin-bottom: 15px; 
+            border: 1px solid #333; display: flex; align-items: center; justify-content: space-between;
+            transition: 0.2s;
         }
 
-        @keyframes float { 0% {transform: translateY(0px);} 50% {transform: translateY(-10px);} 100% {transform: translateY(0px);} }
+        .status-badge {
+            font-size: 0.75rem; font-weight: bold; padding: 4px 8px; border-radius: 6px;
+            background: rgba(0,0,0,0.3); display: inline-flex; align-items: center; gap: 6px; margin-top: 5px;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+        .dot.on { background: var(--primary); box-shadow: 0 0 5px var(--primary); }
+        .dot.off { background: #e63946; }
 
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 900;
-            margin: 0;
-            background: linear-gradient(to right, #ffffff, #52b788);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            line-height: 1.1;
+        .btn-panel {
+            background: var(--primary); color: #000; text-decoration: none; 
+            padding: 10px 20px; border-radius: 10px; font-weight: 800; font-size: 0.9rem;
         }
 
-        .hero-subtitle {
-            font-size: 1.2rem;
-            color: var(--text-muted);
-            max-width: 600px;
-            margin: 20px auto 40px;
+        .add-btn {
+            display: block; width: 100%; padding: 18px; border-radius: 14px;
+            background: #222; color: var(--text-muted); text-align: center; 
+            text-decoration: none; font-weight: bold; border: 2px dashed #444; margin-top: 20px;
         }
 
-        .cta-button {
-            background: var(--gradient);
-            color: white;
-            text-decoration: none;
-            padding: 15px 40px;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: 700;
-            box-shadow: 0 0 20px rgba(82, 183, 136, 0.4);
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: inline-block;
+        /* --- STYL DLA GOŚCI (LANDING PAGE) --- */
+        .landing-wrapper { padding: 40px 20px; text-align: center; overflow-x: hidden; }
+        
+        .hero-logo { width: 100px; margin-bottom: 20px; animation: float 6s infinite ease-in-out; }
+        @keyframes float { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-10px);} }
+
+        .big-title {
+            font-size: 2.8rem; font-weight: 900; line-height: 1.1; margin: 0;
+            background: linear-gradient(to right, #fff, #52b788); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
 
-        .cta-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(82, 183, 136, 0.6);
+        .sub-text { color: var(--text-muted); font-size: 1rem; margin: 20px auto 40px; max-width: 500px; line-height: 1.6; }
+
+        .main-cta {
+            background: var(--gradient); color: white; text-decoration: none;
+            padding: 18px 40px; border-radius: 50px; font-size: 1.1rem; font-weight: bold;
+            display: inline-block; box-shadow: 0 10px 25px rgba(82, 183, 136, 0.3);
+            transition: transform 0.2s;
         }
+        .main-cta:active { transform: scale(0.95); }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            max-width: 1000px;
-            margin: 40px auto;
-            padding: 20px;
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 50px; text-align: left; }
+        
+        .f-card {
+            background: rgba(255,255,255,0.03); padding: 25px; border-radius: 16px; border: 1px solid #333;
         }
+        .f-icon { font-size: 1.8rem; margin-bottom: 10px; }
+        .f-title { font-weight: bold; font-size: 1.1rem; color: #d8f3dc; margin-bottom: 5px; }
+        .f-desc { font-size: 0.85rem; color: #888; line-height: 1.4; }
 
-        .feature-card {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 30px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-        }
-
-        .feature-icon { font-size: 2rem; margin-bottom: 15px; }
-        .feature-title { font-weight: 700; font-size: 1.3rem; margin-bottom: 10px; color: var(--accent); }
-        .feature-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
-
-        /* Responsywność */
-        @media (max-width: 768px) {
-            .hero-title { font-size: 2.5rem; }
-            .landing-hero { min-height: auto; padding-top: 60px; padding-bottom: 60px; }
+        /* --- MOBILE TWEAKS --- */
+        @media (max-width: 600px) {
+            .big-title { font-size: 2.2rem; }
+            
+            /* Karty urządzeń na telefonie */
+            .device-card { 
+                flex-direction: column; align-items: flex-start; gap: 15px; 
+            }
+            .device-card .btn-panel { 
+                width: 100%; text-align: center; box-sizing: border-box; 
+                background: #2d3430; color: white; border: 1px solid var(--primary);
+            }
+            
+            /* Nagłówek dashboardu */
+            .dashboard-header h2 { font-size: 1.1rem; }
+            .dashboard-header img { width: 30px; }
         }
     </style>
 </head>
 <body>
 
     {% if user.is_authenticated %}
+    
+    <div class="dashboard-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="{% static 'img/anima.png' %}" alt="Logo" style="width: 35px;">
+            <span style="font-weight:bold; letter-spacing:0.5px;">AnimalLogic</span>
+        </div>
+        <a href="{% url 'logout' %}" style="color: #e63946; text-decoration: none; font-size: 0.85rem; font-weight: bold; padding: 5px 10px; background: rgba(230, 57, 70, 0.1); border-radius: 8px;">Wyloguj</a>
+    </div>
+
     <div class="dashboard-container">
         
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <img src="{% static 'img/anima.png' %}" alt="Logo" style="width: 40px;">
-                <h2 style="margin:0;">Witaj, {{ user.username }}</h2>
-            </div>
-            <a href="{% url 'logout' %}" style="color: #ff5400; text-decoration: none; font-weight: bold;">Wyloguj</a>
+        <div style="margin-bottom: 20px;">
+            <h1 style="font-size: 1.5rem; margin-bottom: 5px;">Cześć, {{ user.username }}!</h1>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Oto Twoje centrum dowodzenia.</p>
         </div>
 
         {% if messages %}
             {% for message in messages %}
-                <div style="background: #333; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 20px;">{{ message }}</div>
+                <div style="background: #222; border-left: 3px solid var(--primary); color: #fff; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9rem;">{{ message }}</div>
             {% endfor %}
         {% endif %}
 
-        <h3 style="color: var(--text-muted); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; margin-bottom: 15px;">Twoje Systemy</h3>
-
         {% for device in devices %}
-        <div class="device-card" {% if not device.is_active %}style="opacity: 0.6;"{% endif %}>
-            <div>
-                <h3 style="margin: 0 0 5px 0; font-size: 1.2rem;">{{ device.name }}</h3>
-                <div style="font-size: 0.8rem; font-weight: bold;">
+        <div class="device-card" {% if not device.is_active %}style="opacity: 0.7;"{% endif %}>
+            <div style="flex:1;">
+                <h3 style="margin: 0; font-size: 1.3rem;">{{ device.name }}</h3>
+                <div class="status-badge">
                     {% if device.is_active %}
-                        <span class="status-dot status-online"></span> <span style="color:#52b788;">ONLINE</span>
+                        <span class="dot on"></span> ONLINE
                     {% else %}
-                        <span class="status-dot status-offline"></span> <span style="color:#e63946;">OFFLINE</span>
+                        <span class="dot off"></span> OFFLINE
                     {% endif %}
                 </div>
             </div>
-            <a href="{% url 'dashboard' device.device_id %}" class="btn">PANEL →</a>
+            <a href="{% url 'dashboard' device.device_id %}" class="btn-panel">PANEL</a>
         </div>
         {% empty %}
-            <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed #333; border-radius: 15px;">
-                <p>Nie masz jeszcze dodanych urządzeń.</p>
-                <a href="{% url 'add_device' %}" style="color: var(--primary);">+ Dodaj pierwsze</a>
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <p>Pusto tutaj... 🐍</p>
+                <p style="font-size: 0.85rem;">Dodaj swoje pierwsze sterowanie.</p>
             </div>
         {% endfor %}
 
-        <a href="{% url 'add_device' %}" style="display: block; background: #333; color: white; text-align: center; padding: 15px; border-radius: 12px; margin-top: 20px; text-decoration: none; font-weight: bold;">+ Dodaj Urządzenie</a>
+        <a href="{% url 'add_device' %}" class="add-btn">+ Dodaj Nowe Urządzenie</a>
     </div>
-
 
     {% else %}
     
-    <div class="landing-hero">
-        <img src="{% static 'anima.png' %}" alt="AnimalLogic" class="landing-logo">
+    <div class="landing-wrapper">
+        <img src="{% static 'img/anima.png' %}" alt="Logo" class="hero-logo">
         
-        <h1 class="hero-title">Animal Logic<br>Automation</h1>
-        <p class="hero-subtitle">
-            Profesjonalny system kontroli terrariów. 
-            Automatyzacja światła, kontrola temperatury, alerty w czasie rzeczywistym.
-            Wszystko w Twoim telefonie.
+        <h1 class="big-title">Pełna kontrola.<br>Zero stresu.</h1>
+        <p class="sub-text">
+            Inteligentny system dla Twojego terrarium. 
+            Automatyzacja, powiadomienia i podgląd na żywo w jednej aplikacji.
         </p>
 
-        <a href="{% url 'login' %}" class="cta-button">Zaloguj się do Panelu</a>
+        <a href="{% url 'login' %}" class="main-cta">Rozpocznij teraz</a>
 
-        <div class="features-grid">
-            
-            <div class="feature-card">
-                <div class="feature-icon">🌡️</div>
-                <div class="feature-title">Precyzja</div>
-                <div class="feature-desc">Monitoruj temperaturę i wilgotność co 5 sekund z dokładnością laboratoryjną. Wykresy historii do 30 dni.</div>
+        <div class="features">
+            <div class="f-card">
+                <div class="f-icon">🌡️</div>
+                <div class="f-title">Idealny Klimat</div>
+                <div class="f-desc">Automatyczna kontrola grzałki i nawilżacza. Twój zwierzak będzie zachwycony.</div>
             </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">💡</div>
-                <div class="feature-title">Cykl Dobowy</div>
-                <div class="feature-desc">Automatyczne sterowanie oświetleniem. Symulacja wschodu i zachodu słońca. Tryb nocny dla gadów.</div>
+            <div class="f-card">
+                <div class="f-icon">💡</div>
+                <div class="f-title">Dzień i Noc</div>
+                <div class="f-desc">Sterowanie oświetleniem zgodnie z cyklem dobowym.</div>
             </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">🚨</div>
-                <div class="feature-title">Bezpieczeństwo</div>
-                <div class="feature-desc">Natychmiastowe alerty email, gdy temperatura spadnie lub wzrośnie powyżej normy. Śpij spokojnie.</div>
+            <div class="f-card">
+                <div class="f-icon">📱</div>
+                <div class="f-title">Dostęp Mobile</div>
+                <div class="f-desc">Zainstaluj jako aplikację (PWA) i miej panel zawsze pod ręką.</div>
             </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">📱</div>
-                <div class="feature-title">PWA Mobile</div>
-                <div class="feature-desc">Działa jak aplikacja natywna na iOS i Android. Zainstaluj na ekranie głównym bez AppStore.</div>
-            </div>
-
         </div>
 
-        <p style="color: #666; font-size: 0.8rem; margin-top: 40px;">
-            Powered by ESP8266 & Django | Wersja v2.0
-        </p>
+        <p style="margin-top: 50px; font-size: 0.75rem; color: #444;">&copy; 2024 AnimalLogic v2.0</p>
     </div>
 
     {% endif %}
 
     <script>
-        // Automatyczne odświeżanie tylko dla zalogowanych (Dashboard)
         {% if user.is_authenticated %}
-        setTimeout(function(){
-           window.location.reload(1);
-        }, 30000);
+        setTimeout(() => window.location.reload(), 30000); // Odświeżanie co 30s
         {% endif %}
     </script>
 </body>
