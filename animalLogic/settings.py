@@ -162,3 +162,7 @@ DEFAULT_FROM_EMAIL = 'system@animallogic.pl'
 # --- TOKEN BEZPIECZEŃSTWA DLA ESP8266 ---
 # Token używany do autoryzacji czujników w apps/api/views.py
 SENSOR_API_TOKEN = "dI-Fdlp40BeaJWzaEPBPnHh0afiz_5EvKaOqjZGgeYc"
+# --- USTAWIENIA LOGOWANIA (To naprawi błąd "accounts/login") ---
+LOGIN_URL = 'login'            # Gdzie przekierować niezalogowanego (na Twój widok /login/)
+LOGIN_REDIRECT_URL = 'home'    # Gdzie przenieść po udanym logowaniu
+LOGOUT_REDIRECT_URL = 'login'  # Gdzie przenieść po wylogowaniu

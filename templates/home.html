@@ -1,117 +1,235 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <title>Moje Urządzenia - AnimalLogic</title>
+    <title>AnimalLogic - Inteligentne Terrarium</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
     
-    <meta name="theme-color" content="#101412"> <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#101412"> 
+    <link rel="manifest" href="/manifest.json">
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                .then(function(registration) {
-                    console.log('ServiceWorker zarejestrowany: ', registration.scope);
-                }, function(err) {
-                    console.log('Błąd ServiceWorker: ', err);
-                });
+                navigator.serviceWorker.register('/sw.js');
             });
         }
     </script>
     <style>
-        body { background: #101412; color: white; font-family: 'Lato', sans-serif; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        h1 { color: #52b788; margin-bottom: 5px; }
-        .subtitle { color: #adb5bd; margin-top: 0; font-size: 0.9rem; }
-        
-        .device-card { background: #1c2420; padding: 20px; border-radius: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; transition: transform 0.2s; }
-        .device-card:hover { transform: translateY(-2px); border-color: #52b788; }
-        
-        .device-info h3 { margin: 0 0 5px 0; font-size: 1.2rem; }
-        .device-info p { margin: 0; color: #adb5bd; font-size: 0.8rem; font-family: monospace; }
-        
-        .actions { display: flex; gap: 10px; align-items: center; }
-        .btn { background: #2d6a4f; color: white; text-decoration: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
-        .btn:hover { background: #40916c; }
-        
-        .btn-del { background: #5c1b1b; color: #ffadad; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-del:hover { background: #d00000; color: white; }
-        
-        .btn-add-main { background: #52b788; color: #000; display: block; text-align: center; text-decoration: none; padding: 15px; font-weight: 900; border-radius: 12px; margin-top: 30px; text-transform: uppercase; letter-spacing: 1px; }
-        .btn-add-main:hover { background: #74c69d; }
+        :root {
+            --primary: #52b788;
+            --accent: #d8f3dc;
+            --dark: #101412;
+            --card-bg: #1c2420;
+            --text-main: #ffffff;
+            --text-muted: #adb5bd;
+            --gradient: linear-gradient(135deg, #52b788 0%, #2d6a4f 100%);
+        }
 
-        .logout { float: right; color: #ff5400; text-decoration: none; font-weight: bold; font-size: 0.9rem; margin-top: 10px; }
-        .alert { padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 0.9rem; }
-        .alert-error { background: #5c1b1b; color: #ffadad; }
-        .alert-success { background: #1b4d3e; color: #a3ffcf; }
+        body { 
+            background: var(--dark); 
+            color: var(--text-main); 
+            font-family: 'Outfit', sans-serif; 
+            margin: 0; 
+            padding: 0;
+            overflow-x: hidden;
+        }
 
-        /* Style dla statusu */
+        /* --- STYL DLA ZALOGOWANYCH (PANEL) --- */
+        .dashboard-container { max-width: 600px; margin: 20px auto; padding: 20px; }
+        .device-card { background: var(--card-bg); padding: 20px; border-radius: 16px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; transition: 0.3s; }
+        .device-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .btn { background: var(--primary); color: white; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
         .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .status-online { background-color: #52b788; box-shadow: 0 0 5px #52b788; }
+        .status-online { background-color: var(--primary); box-shadow: 0 0 8px var(--primary); }
         .status-offline { background-color: #e63946; }
+
+        /* --- STYL DLA LANDING PAGE (NIEZALOGOWANI) --- */
+        .landing-hero {
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            background: radial-gradient(circle at 50% 50%, #1c2420 0%, #101412 70%);
+            position: relative;
+        }
+
+        .landing-logo {
+            width: 120px;
+            margin-bottom: 20px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float { 0% {transform: translateY(0px);} 50% {transform: translateY(-10px);} 100% {transform: translateY(0px);} }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin: 0;
+            background: linear-gradient(to right, #ffffff, #52b788);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.1;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 20px auto 40px;
+        }
+
+        .cta-button {
+            background: var(--gradient);
+            color: white;
+            text-decoration: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            box-shadow: 0 0 20px rgba(82, 183, 136, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(82, 183, 136, 0.6);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .feature-icon { font-size: 2rem; margin-bottom: 15px; }
+        .feature-title { font-weight: 700; font-size: 1.3rem; margin-bottom: 10px; color: var(--accent); }
+        .feature-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
+
+        /* Responsywność */
+        @media (max-width: 768px) {
+            .hero-title { font-size: 2.5rem; }
+            .landing-hero { min-height: auto; padding-top: 60px; padding-bottom: 60px; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        {% if user.is_authenticated %}
-            <a href="{% url 'logout' %}" class="logout">Wyloguj</a>
-            <h1>Witaj, {{ user.username }}!</h1>
-        {% else %}
-            <a href="{% url 'login' %}" class="logout">Zaloguj</a>
-            <h1>Witaj, Nieznajomy!</h1>
-        {% endif %}
+
+    {% if user.is_authenticated %}
+    <div class="dashboard-container">
         
-        <p class="subtitle">Panel zarządzania AnimalLogic</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img src="{% static 'img/anima.png' %}" alt="Logo" style="width: 40px;">
+                <h2 style="margin:0;">Witaj, {{ user.username }}</h2>
+            </div>
+            <a href="{% url 'logout' %}" style="color: #ff5400; text-decoration: none; font-weight: bold;">Wyloguj</a>
+        </div>
 
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                <div style="background: #333; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 20px;">{{ message }}</div>
             {% endfor %}
         {% endif %}
 
-        <h2 style="margin-top: 40px; border-bottom: 1px solid #333; padding-bottom: 10px;">Twoje Terraria</h2>
-        
+        <h3 style="color: var(--text-muted); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; margin-bottom: 15px;">Twoje Systemy</h3>
+
         {% for device in devices %}
         <div class="device-card" {% if not device.is_active %}style="opacity: 0.6;"{% endif %}>
-            <div class="device-info">
-                <h3>{{ device.name }}</h3>
-                <p>ID: {{ device.device_id }}</p>
-                
-                <div style="margin-top: 8px; font-size: 0.8rem; font-weight: bold;">
+            <div>
+                <h3 style="margin: 0 0 5px 0; font-size: 1.2rem;">{{ device.name }}</h3>
+                <div style="font-size: 0.8rem; font-weight: bold;">
                     {% if device.is_active %}
-                        <span class="status-dot status-online"></span>
-                        <span style="color:#52b788;">ONLINE</span>
+                        <span class="status-dot status-online"></span> <span style="color:#52b788;">ONLINE</span>
                     {% else %}
-                        <span class="status-dot status-offline"></span>
-                        <span style="color:#e63946;">OFFLINE</span>
-                        <span style="color:#adb5bd; font-size: 0.7rem; font-weight: normal;">
-                            (Ostatni: {{ device.last_seen|date:"H:i:s" }})
-                        </span>
+                        <span class="status-dot status-offline"></span> <span style="color:#e63946;">OFFLINE</span>
                     {% endif %}
                 </div>
             </div>
-            
-            <div class="actions">
-                <a href="{% url 'dashboard' device.device_id %}" class="btn">PANEL</a>
-                <form action="{% url 'delete_device' device.device_id %}" method="POST" onsubmit="return confirm('Usunąć urządzenie z konta?');" style="margin:0;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-del">X</button>
-                </form>
-            </div>
+            <a href="{% url 'dashboard' device.device_id %}" class="btn">PANEL →</a>
         </div>
         {% empty %}
-            <div style="text-align:center; padding: 40px; color: #555;">
-                <p>Nie masz jeszcze żadnych urządzeń.</p>
+            <div style="text-align: center; padding: 40px; color: var(--text-muted); border: 1px dashed #333; border-radius: 15px;">
+                <p>Nie masz jeszcze dodanych urządzeń.</p>
+                <a href="{% url 'add_device' %}" style="color: var(--primary);">+ Dodaj pierwsze</a>
             </div>
         {% endfor %}
 
-        <a href="{% url 'add_device' %}" class="btn-add-main">+ Dodaj nowe urządzenie</a>
+        <a href="{% url 'add_device' %}" style="display: block; background: #333; color: white; text-align: center; padding: 15px; border-radius: 12px; margin-top: 20px; text-decoration: none; font-weight: bold;">+ Dodaj Urządzenie</a>
     </div>
 
+
+    {% else %}
+    
+    <div class="landing-hero">
+        <img src="{% static 'img/anima.png' %}" alt="AnimalLogic" class="landing-logo">
+        
+        <h1 class="hero-title">Animal Logic<br>Automation</h1>
+        <p class="hero-subtitle">
+            Profesjonalny system kontroli terrariów. 
+            Automatyzacja światła, kontrola temperatury, alerty w czasie rzeczywistym.
+            Wszystko w Twoim telefonie.
+        </p>
+
+        <a href="{% url 'login' %}" class="cta-button">Zaloguj się do Panelu</a>
+
+        <div class="features-grid">
+            
+            <div class="feature-card">
+                <div class="feature-icon">🌡️</div>
+                <div class="feature-title">Precyzja</div>
+                <div class="feature-desc">Monitoruj temperaturę i wilgotność co 5 sekund z dokładnością laboratoryjną. Wykresy historii do 30 dni.</div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">💡</div>
+                <div class="feature-title">Cykl Dobowy</div>
+                <div class="feature-desc">Automatyczne sterowanie oświetleniem. Symulacja wschodu i zachodu słońca. Tryb nocny dla gadów.</div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🚨</div>
+                <div class="feature-title">Bezpieczeństwo</div>
+                <div class="feature-desc">Natychmiastowe alerty email, gdy temperatura spadnie lub wzrośnie powyżej normy. Śpij spokojnie.</div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <div class="feature-title">PWA Mobile</div>
+                <div class="feature-desc">Działa jak aplikacja natywna na iOS i Android. Zainstaluj na ekranie głównym bez AppStore.</div>
+            </div>
+
+        </div>
+
+        <p style="color: #666; font-size: 0.8rem; margin-top: 40px;">
+            Powered by ESP8266 & Django | Wersja v2.0
+        </p>
+    </div>
+
+    {% endif %}
+
     <script>
+        // Automatyczne odświeżanie tylko dla zalogowanych (Dashboard)
+        {% if user.is_authenticated %}
         setTimeout(function(){
            window.location.reload(1);
         }, 30000);
+        {% endif %}
     </script>
 </body>
 </html>

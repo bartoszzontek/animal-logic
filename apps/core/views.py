@@ -51,12 +51,18 @@ def logout_view(request):
 
 # --- DASHBOARD & HOME ---
 
-@login_required
+# apps/core/views.py
+
 def home(request):
-    devices = Terrarium.objects.filter(owner=request.user)
-    return render(request, 'home.html', {'devices': devices, 'user': request.user})
+    # Jeśli użytkownik jest zalogowany -> Pokaż mu jego terraria
+    if request.user.is_authenticated:
+        # Pobieramy urządzenia przypisane do użytkownika (z modelu Terrarium)
+        devices = request.user.terrariums.all()
+    else:
+        # Jeśli nie jest zalogowany -> Pusta lista (wyświetlimy Landing Page w HTML)
+        devices = []
 
-
+    return render(request, 'home.html', {'devices': devices})
 @login_required
 def add_device(request):
     if request.method == "POST":
