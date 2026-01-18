@@ -159,3 +159,6 @@ DEFAULT_FROM_EMAIL = 'system@animallogic.pl'
 # EMAIL_USE_TLS = True
 # EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
 # EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+# --- TOKEN BEZPIECZEŃSTWA DLA ESP8266 ---
+# Token używany do autoryzacji czujników w apps/api/views.py
+SENSOR_API_TOKEN = "dI-Fdlp40BeaJWzaEPBPnHh0afiz_5EvKaOqjZGgeYc"
