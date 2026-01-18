@@ -4,6 +4,20 @@
     <title>Moje Urządzenia - AnimalLogic</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <meta name="theme-color" content="#101412"> <link rel="manifest" href="/manifest.json">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                .then(function(registration) {
+                    console.log('ServiceWorker zarejestrowany: ', registration.scope);
+                }, function(err) {
+                    console.log('Błąd ServiceWorker: ', err);
+                });
+            });
+        }
+    </script>
     <style>
         body { background: #101412; color: white; font-family: 'Lato', sans-serif; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; }

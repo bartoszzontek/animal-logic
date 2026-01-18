@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import TemplateView  # <--- WAŻNE: Dodaj ten import!
 from . import views
 
 urlpatterns = [
@@ -18,10 +19,19 @@ urlpatterns = [
     # API Wykresów
     path('api/history/<str:period>/', views.history_data, name='history_data'),
 
-    # --- PWA (TEGO BRAKOWAŁO) ---
-    path('manifest.json', views.manifest_view, name='manifest'),
-    path('sw.js', views.service_worker_view, name='service_worker'),
-    path('offline/', views.offline_view, name='offline'),
+    # --- PWA (POPRAWIONE) ---
+    # Używamy TemplateView bezpośrednio tutaj, żeby nie babrać się w views.py
+    path('manifest.json', TemplateView.as_view(
+        template_name='manifest.json',
+        content_type='application/json'  # To jest kluczowe dla Androida/Chrome!
+    ), name='manifest'),
+
+    path('sw.js', TemplateView.as_view(
+        template_name='sw.js',
+        content_type='application/javascript' # To jest kluczowe dla działania Workera!
+    ), name='service_worker'),
+
+    path('offline/', TemplateView.as_view(template_name='offline.html'), name='offline'),
 
     # Home
     path('', views.home, name='home'),
