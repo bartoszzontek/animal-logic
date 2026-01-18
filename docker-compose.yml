@@ -33,7 +33,7 @@ services:
       - DB_HOST=db
       - DB_PORT=5432
       # Adresy (Ważne!)
-      - ALLOWED_HOSTS=localhost,127.0.0.1,animal-server.local,192.168.1.25,animal.zipit.pl
+      - ALLOWED_HOSTS=localhost,127.0.0.1,animal-server.local,192.168.31.161,animal.zipit.pl,www.animal.zipit.pl
     depends_on:
       - db
     restart: always

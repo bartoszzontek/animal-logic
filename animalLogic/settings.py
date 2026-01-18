@@ -31,7 +31,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost',             # Lokalne testy
     'http://127.0.0.1',
     'http://animal-server.local',   # Adres w sieci lokalnej
-    'http://192.168.1.25'           # IP Malinki (jeśli używasz)
+    'http://192.168.31.161'           # IP Malinki (jeśli używasz)
 ]
 
 
