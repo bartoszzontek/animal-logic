@@ -1,0 +1,8 @@
+Django>=5.0
+djangorestframework>=3.14
+psycopg2-binary>=2.9      # Sterownik PostgreSQL
+python-decouple>=3.8      # Do ukrywania haseł
+gunicorn>=21.2            # Serwer produkcyjny
+pytz                      # Strefy czasowe
+gunicorn
+psycopg2-binary

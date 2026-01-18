@@ -1,0 +1,229 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.http import JsonResponse, HttpResponse  # <--- WAŻNE: Dodano HttpResponse
+from django.utils import timezone
+from datetime import timedelta
+import datetime
+
+from .models import Terrarium, Reading, AllowedDevice
+from .forms import RegisterForm, AddDeviceForm, TerrariumSettingsForm
+
+
+# --- AUTH ---
+
+def register_view(request):
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            user = User.objects.create_user(
+                username=form.cleaned_data['username'],
+                password=form.cleaned_data['password'],
+                email=form.cleaned_data.get('email', '')
+            )
+            login(request, user)
+            return redirect('home')
+    else:
+        form = RegisterForm()
+    return render(request, 'register.html', {'form': form})
+
+
+def login_view(request):
+    if request.method == "POST":
+        u = request.POST.get('username')
+        p = request.POST.get('password')
+        user = authenticate(request, username=u, password=p)
+        if user is not None:
+            login(request, user)
+            return redirect('home')
+        else:
+            messages.error(request, "Błędne dane logowania")
+    return render(request, 'login.html')
+
+
+@login_required
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+
+
+# --- DASHBOARD & HOME ---
+
+@login_required
+def home(request):
+    devices = Terrarium.objects.filter(owner=request.user)
+    return render(request, 'home.html', {'devices': devices, 'user': request.user})
+
+
+@login_required
+def add_device(request):
+    if request.method == "POST":
+        form = AddDeviceForm(request.POST)
+        if form.is_valid():
+            dev_id = form.cleaned_data['device_id']
+            name = form.cleaned_data['name']
+            device, created = Terrarium.objects.get_or_create(device_id=dev_id)
+            device.owner = request.user
+            device.name = name
+            device.save()
+            messages.success(request, "Urządzenie dodane pomyślnie!")
+            return redirect('home')
+    else:
+        form = AddDeviceForm()
+    return render(request, 'add_device.html', {'form': form})
+
+
+@login_required
+def delete_device(request, device_id):
+    if request.method == "POST":
+        device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+        device.owner = None
+        device.save()
+        messages.success(request, "Urządzenie usunięte z konta.")
+    return redirect('home')
+
+
+@login_required
+def dashboard(request, device_id):
+    device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+
+    if request.method == "POST":
+        form = TerrariumSettingsForm(request.POST, instance=device)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Ustawienia zapisane!")
+            return redirect('dashboard', device_id=device_id)
+        else:
+            print(f"❌ BŁĄD FORMULARZA DLA {device_id}:", form.errors)
+            messages.error(request, "Błąd zapisu. Sprawdź poprawność danych.")
+
+    last_reading = device.readings.first()
+    if not last_reading:
+        last_reading = {'temp': 0, 'hum': 0, 'timestamp': timezone.now(),
+                        'is_heater_on': False, 'is_mist_on': False, 'is_light_on': False}
+
+    features = {
+        'heater': True,
+        'mist': device.device_id.startswith(('A', 'B')),
+        'light': device.device_id.startswith(('A', 'D'))
+    }
+
+    return render(request, 'dashboard.html', {
+        'settings': device,
+        'reading': last_reading,
+        'features': features,
+        'user': request.user
+    })
+
+
+@login_required
+def toggle_light(request, device_id):
+    device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+    if device.light_mode == 'auto':
+        device.light_mode = 'manual'
+        device.light_manual_state = True
+        msg = "Przełączono na tryb RĘCZNY: Światło WŁĄCZONE."
+    else:
+        device.light_manual_state = not device.light_manual_state
+        state_txt = "WŁĄCZONE" if device.light_manual_state else "WYŁĄCZONE"
+        msg = f"Światło {state_txt} (Tryb Ręczny)."
+    device.save()
+    messages.info(request, msg)
+    return redirect('dashboard', device_id=device_id)
+
+
+@login_required
+def history_data(request, period):
+    dev_id = request.GET.get('id')
+    device = get_object_or_404(Terrarium, device_id=dev_id, owner=request.user)
+    now = timezone.now()
+    if period == 'day':
+        delta, limit = timedelta(hours=24), 48
+    elif period == 'week':
+        delta, limit = timedelta(days=7), 100
+    else:
+        delta, limit = timedelta(days=30), 100
+    readings = Reading.objects.filter(terrarium=device, timestamp__gte=now - delta).order_by('timestamp')
+    data_list = list(readings.values('timestamp', 'temp', 'hum'))
+    if len(data_list) > limit:
+        step = len(data_list) // limit
+        data_list = data_list[::step]
+    labels = []
+    temps = []
+    hums = []
+    for r in data_list:
+        local_time = timezone.localtime(r['timestamp'])
+        if period == 'day':
+            labels.append(local_time.strftime('%H:%M'))
+        else:
+            labels.append(local_time.strftime('%d.%m'))
+        temps.append(r['temp'])
+        hums.append(r['hum'])
+    return JsonResponse({'labels': labels, 'temps': temps, 'hums': hums})
+
+
+# --- PWA (TEGO BRAKOWAŁO LUB BYŁO NIEPODPIĘTE) ---
+
+def manifest_view(request):
+    manifest = {
+        "name": "AnimalLogic",
+        "short_name": "AnimalLogic",
+        "description": "Smart Terrarium Controller",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#101412",
+        "theme_color": "#2d6a4f",
+        "orientation": "portrait",
+        "icons": [
+            {
+                "src": "https://cdn-icons-png.flaticon.com/512/2395/2395798.png",
+                "type": "image/png",
+                "sizes": "512x512"
+            }
+        ]
+    }
+    return JsonResponse(manifest)
+
+
+def service_worker_view(request):
+    js = """
+    const CACHE_NAME = 'animallogic-v1';
+    const OFFLINE_URL = '/offline/';
+
+    self.addEventListener('install', (event) => {
+        event.waitUntil(
+            caches.open(CACHE_NAME).then((cache) => {
+                return cache.addAll([OFFLINE_URL]);
+            })
+        );
+    });
+
+    self.addEventListener('fetch', (event) => {
+        if (event.request.mode === 'navigate') {
+            event.respondWith(
+                fetch(event.request).catch(() => {
+                    return caches.match(OFFLINE_URL);
+                })
+            );
+        }
+    });
+    """
+    return HttpResponse(js, content_type='application/javascript')
+
+
+def offline_view(request):
+    html = """
+    <!DOCTYPE html>
+    <html style="background:#101412; color:white; font-family:sans-serif; text-align:center; padding-top:50px;">
+    <head><title>Offline</title><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+    <body>
+        <h1 style="color:#e63946; font-size:3rem;">OFFLINE</h1>
+        <p>Brak połączenia z internetem.</p>
+        <p>Sprawdź WiFi i odśwież stronę.</p>
+        <button onclick="window.location.reload()" style="padding:15px 30px; font-weight:bold; background:#2d6a4f; color:white; border:none; border-radius:10px; margin-top:20px;">ODŚWIEŻ</button>
+    </body>
+    </html>
+    """
+    return HttpResponse(html)

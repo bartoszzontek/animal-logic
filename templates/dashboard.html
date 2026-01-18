@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel: {{ settings.name }}</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2d6a4f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2395/2395798.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #F2F5F3; --bg-card: #ffffff; --text-main: #1a2621; --text-muted: #5e7065;
+            --primary: #2d6a4f; --input-bg: #f8f9fa; --border: #e9ecef;
+            --temp-color: #d00000; --hum-color: #0077b6;
+            --light-on-bg: rgba(255, 183, 3, 0.2); --light-on-text: #d48c00; --light-on-border: #ffb703;
+            --offline-color: #6c757d;
+        }
+        body.dark-mode {
+            --bg-body: #101412; --bg-card: #1c2420; --text-main: #e9ecef; --text-muted: #adb5bd;
+            --primary: #52b788; --input-bg: #2d3430; --border: #343a40;
+            --temp-color: #ff5400; --hum-color: #4cc9f0;
+            --light-on-text: #ffd000; --light-on-border: #ffd000;
+        }
+
+        body { font-family: 'Lato', sans-serif; background: var(--bg-body); color: var(--text-main); margin: 0; padding: 20px; transition: 0.3s; padding-bottom: 80px; } /* padding-bottom dla iOS */
+        .container { max-width: 500px; margin: 0 auto; }
+
+        .nav-back { display: block; margin-bottom: 15px; color: var(--text-muted); text-decoration: none; font-weight: bold; font-size: 0.9rem; }
+        .nav-back:hover { color: var(--primary); }
+
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .app-title h1 { margin: 0; font-size: 1.8rem; color: var(--primary); font-weight: 900; }
+        .device-sub { font-size: 0.9rem; color: var(--text-muted); font-weight: bold; }
+        .theme-toggle { background: none; border: 2px solid var(--primary); color: var(--primary); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+
+        .card { background: var(--bg-card); border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 25px; border: 1px solid var(--border); }
+
+        .readings-container { display: flex; justify-content: space-between; text-align: center; margin-bottom: 20px; }
+        .reading-box { flex: 1; }
+        .reading-val { font-size: 3.5rem; font-weight: 900; line-height: 1; margin: 5px 0; }
+        .val-temp { color: var(--temp-color); }
+        .val-hum { color: var(--hum-color); }
+        .reading-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: bold; color: white; margin-top: 5px; animation: pulse 2s infinite; }
+        .badge-heat { background-color: var(--temp-color); }
+        .badge-mist { background-color: var(--hum-color); }
+        .badge-offline { background-color: var(--offline-color); animation: none; opacity: 0.5; }
+        
+        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+
+        .light-status-bar { padding: 15px; border-radius: 12px; text-align: center; font-weight: 800; display: flex; justify-content: center; gap: 10px; border: 2px solid transparent; }
+        .light-on { background: var(--light-on-bg); color: var(--light-on-text); border-color: var(--light-on-border); }
+        .light-off { background: var(--input-bg); color: var(--text-muted); border-color: var(--border); }
+        .light-offline { background: var(--input-bg); color: var(--text-muted); border-color: var(--border); opacity: 0.5; }
+
+        .chart-controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+        .chart-btn { background: var(--input-bg); border: 1px solid var(--border); color: var(--text-muted); padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
+        .chart-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+
+        h2 { font-size: 1.1rem; color: var(--primary); border-left: 4px solid var(--primary); padding-left: 10px; margin-top: 25px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        h2:first-of-type { margin-top: 0; }
+        .form-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: var(--input-bg); padding: 12px 15px; border-radius: 10px; transition: 0.2s; }
+        input, select { background: var(--bg-card); color: var(--text-main); border: 2px solid var(--border); border-radius: 8px; padding: 8px; text-align: center; font-weight: bold; outline: none; width: 140px; box-sizing: border-box; height: 40px; }
+        select { text-align-last: center; }
+        input:focus, select:focus { border-color: var(--primary); }
+        .hidden { display: none !important; }
+        .btn-save { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 900; cursor: pointer; margin-top: 25px; text-transform: uppercase; letter-spacing: 1px; }
+        .last-update { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px; opacity: 0.7;}
+        
+        .alert { padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 0.9rem; background: #5c1b1b; color: #ffadad; }
+        .alert-success { background: #1b4d3e; color: #a3ffcf; }
+        .alert-info { background: #2d3430; color: #adb5bd; border: 1px solid #343a40; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="{% url 'home' %}" class="nav-back">&larr; Wróć do listy</a>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'info' %}alert-info{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="header-row">
+        <div class="app-title">
+            <h1>{{ settings.name }}</h1>
+            <span class="device-sub">ID: {{ settings.device_id }}</span>
+            {% if settings.is_active %}
+                <span style="color: #52b788; font-weight: bold; font-size: 0.8rem; margin-left: 10px;">● ONLINE</span>
+            {% else %}
+                <span style="color: #e63946; font-weight: bold; font-size: 0.8rem; margin-left: 10px;">● OFFLINE</span>
+            {% endif %}
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</button>
+    </div>
+
+    <div class="last-update">
+        Ostatni odczyt: {{ reading.timestamp|date:"H:i:s" }}
+        {% if not settings.is_active %}(Archiwalny){% endif %}
+    </div>
+
+    <div class="card" {% if not settings.is_active %}style="opacity: 0.7; filter: grayscale(1);"{% endif %}>
+        <div class="readings-container">
+            <div class="reading-box">
+                <div class="reading-label">Temperatura</div>
+                <div class="reading-val val-temp">{{ reading.temp|stringformat:".1f" }}°</div>
+                {% if settings.is_active %}
+                    {% if reading.is_heater_on %}
+                        <div class="status-badge badge-heat">GRZANIE</div>
+                    {% else %}
+                        <div class="reading-label" style="opacity:0.6;margin-top:5px;">CEL: {{ settings.temp_day|stringformat:".1f" }}°</div>
+                    {% endif %}
+                {% else %}
+                     <div class="status-badge badge-offline">BRAK DANYCH</div>
+                {% endif %}
+            </div>
+
+            <div style="width:1px;background:var(--border);margin:10px 0;"></div>
+            <div class="reading-box">
+                <div class="reading-label">Wilgotność</div>
+                <div class="reading-val val-hum">{{ reading.hum|stringformat:".1f" }}%</div>
+                {% if features.mist %}
+                    {% if settings.is_active %}
+                        {% if reading.is_mist_on %}
+                            <div class="status-badge badge-mist">ZRASZANIE</div>
+                        {% else %}
+                            <div class="reading-label" style="opacity:0.6;margin-top:5px;">
+                                {% if settings.mist_mode == 'auto' %}Min: {{ settings.mist_min_humidity }}%{% else %}Harmonogram{% endif %}
+                            </div>
+                        {% endif %}
+                    {% else %}
+                         <div class="status-badge badge-offline">BRAK DANYCH</div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        {% if features.light %}
+            {% if settings.is_active %}
+                {% if reading.is_light_on %}
+                    <div class="light-status-bar light-on"><span>💡</span> Światło włączone</div>
+                {% else %}
+                    <div class="light-status-bar light-off"><span>🌑</span> Światło wyłączone</div>
+                {% endif %}
+            {% else %}
+                <div class="light-status-bar light-offline"><span>🔌</span> Urządzenie Offline</div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="chart-controls">
+            <button class="chart-btn active" onclick="loadChart('day', this)">24H</button>
+            <button class="chart-btn" onclick="loadChart('week', this)">7 Dni</button>
+            <button class="chart-btn" onclick="loadChart('month', this)">30 Dni</button>
+        </div>
+        <div class="chart-container"><canvas id="myChart"></canvas></div>
+    </div>
+
+    <div class="card">
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="form-row" style="background: transparent; padding-left: 0; border: none;">
+                <span style="font-weight:900; color:var(--primary); font-size:1.1rem; text-transform:uppercase;">NAZWA</span>
+                <input type="text" name="name" value="{{ settings.name }}" required style="text-align:left; width: 100%;">
+            </div>
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 15px 0;">
+
+            <h2>Termostat</h2>
+            <div class="form-row"><span>Dzień (Grzanie)</span><input type="number" step="0.1" name="temp_day" value="{{ settings.temp_day|stringformat:'.1f' }}"></div>
+            <div class="form-row"><span>Noc (Grzanie)</span><input type="number" step="0.1" name="temp_night" value="{{ settings.temp_night|stringformat:'.1f' }}"></div>
+
+            <h2>Cykl Dnia i Nocy</h2>
+            
+            <div style="background: var(--input-bg); padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: center; border: 1px solid var(--border);">
+                <div style="margin-bottom: 10px; font-weight: bold; color: var(--text-muted); font-size: 0.8rem;">
+                    AKTUALNY TRYB: 
+                    {% if settings.light_mode == 'auto' %}
+                        <span style="color: var(--primary); font-weight:900;">AUTOMAT (Zegar)</span>
+                    {% else %}
+                        <span style="color: #e07a5f; font-weight:900;">RĘCZNY (Manual)</span>
+                    {% endif %}
+                </div>
+                <div style="display: flex; justify-content: center; align-items: center;">
+                    <a href="{% url 'toggle_light' settings.device_id %}" 
+                       style="text-decoration: none; padding: 12px 25px; border-radius: 30px; font-weight: 900; font-size: 0.9rem; transition: 0.2s; display: inline-block;
+                       {% if settings.light_manual_state and settings.light_mode == 'manual' %}
+                           background: #ffb703; color: black; box-shadow: 0 0 15px rgba(255, 183, 3, 0.4); border: 2px solid #ffb703;
+                       {% elif settings.light_mode == 'manual' %}
+                           background: transparent; color: var(--text-muted); border: 2px solid var(--text-muted);
+                       {% else %}
+                           background: var(--border); color: var(--text-muted); pointer-events: auto; opacity: 0.8;
+                       {% endif %}">
+                       {% if settings.light_mode == 'auto' %}
+                           PRZEŁĄCZ NA RĘCZNY
+                       {% elif settings.light_manual_state %}
+                           💡 WŁĄCZONE (Kliknij by zgasić)
+                       {% else %}
+                           🌑 WYŁĄCZONE (Kliknij by zapalić)
+                       {% endif %}
+                    </a>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <span>Domyślny Tryb</span>
+                <select name="light_mode">
+                    <option value="auto" {% if settings.light_mode == 'auto' %}selected{% endif %}>Automat</option>
+                    <option value="manual" {% if settings.light_mode == 'manual' %}selected{% endif %}>Ręczny</option>
+                </select>
+            </div>
+            <div class="form-row"><span>Początek Dnia</span><input type="time" name="light_start" value="{{ settings.light_start|time:'H:i' }}"></div>
+            <div class="form-row"><span>Koniec Dnia</span><input type="time" name="light_end" value="{{ settings.light_end|time:'H:i' }}"></div>
+
+            {% if features.mist %}
+            <h2>Zraszanie</h2>
+            <div class="form-row"><span>Tryb</span>
+                <select name="mist_mode" id="mistMode" onchange="updateUI()">
+                    <option value="harmonogram" {% if settings.mist_mode == 'harmonogram' %}selected{% endif %}>Harmonogram</option>
+                    <option value="auto" {% if settings.mist_mode == 'auto' %}selected{% endif %}>Automat</option>
+                </select>
+            </div>
+            <div class="form-row"><span>Czas (sekundy)</span><input type="number" min="1" step="1" name="mist_duration" value="{{ settings.mist_duration }}"></div>
+            <div id="autoOpt" class="hidden">
+                <div class="form-row"><span>Min Wilg %</span><input type="number" step="1" name="mist_min_humidity" value="{{ settings.mist_min_humidity }}"></div>
+            </div>
+            <div id="schedOpt">
+                <div style="text-align:center; font-size:0.7rem; color:var(--text-muted); margin-bottom:10px;">GODZINY URUCHOMIENIA</div>
+                <div class="form-row"><span>Godzina 1</span><input type="time" name="mist_h1" value="{{ settings.mist_h1|time:'H:i'|default:'' }}"></div>
+                <div class="form-row"><span>Godzina 2</span><input type="time" name="mist_h2" value="{{ settings.mist_h2|time:'H:i'|default:'' }}"></div>
+                <div class="form-row"><span>Godzina 3</span><input type="time" name="mist_h3" value="{{ settings.mist_h3|time:'H:i'|default:'' }}"></div>
+                <div class="form-row"><span>Godzina 4</span><input type="time" name="mist_h4" value="{{ settings.mist_h4|time:'H:i'|default:'' }}"></div>
+            </div>
+            {% endif %}
+
+            <h2 style="color: #d00000; border-color: #d00000;">🚨 Alerty Bezpieczeństwa (Email)</h2>
+            <div style="background: #fff5f5; padding: 15px; border-radius: 10px; border: 1px solid #ffd8a8; margin-bottom: 20px;">
+                <div style="text-align: center; margin-bottom: 10px; font-size: 0.8rem; color: #800;">
+                    System wyśle powiadomienie, jeśli temperatura przekroczy te granice.<br>(Maksymalnie 1 email na godzinę)
+                </div>
+                <div class="form-row">
+                    <span>Włącz Alerty</span>
+                    <input type="checkbox" name="alerts_enabled" {% if settings.alerts_enabled %}checked{% endif %} style="width: 25px; height: 25px;">
+                </div>
+                <div class="form-row">
+                    <span>Adres Email</span>
+                    <input type="email" name="alert_email" value="{{ settings.alert_email|default:'' }}" placeholder="{{ user.email }}" style="width: 200px;">
+                </div>
+                <div style="text-align:center; font-size:0.7rem; color:#888; margin-top:-5px; margin-bottom:10px;">Zostaw puste, aby użyć maila konta ({{ user.email }})</div>
+                <div class="form-row"><span>Alarm Min Temp (°C)</span><input type="number" step="0.1" name="alert_min_temp" value="{{ settings.alert_min_temp|stringformat:'.1f' }}" style="color: #0077b6;"></div>
+                <div class="form-row"><span>Alarm Max Temp (°C)</span><input type="number" step="0.1" name="alert_max_temp" value="{{ settings.alert_max_temp|stringformat:'.1f' }}" style="color: #d00000;"></div>
+            </div>
+
+            <button type="submit" class="btn-save">Zapisz ustawienia</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                console.log('ServiceWorker zarejestrowany z zakresem: ', registration.scope);
+            }, function(err) {
+                console.log('Błąd rejestracji ServiceWorker: ', err);
+            });
+        });
+    }
+
+    const body = document.body; const btn = document.getElementById('themeBtn');
+    if(localStorage.getItem('theme')==='dark'){ body.classList.add('dark-mode'); btn.innerText='☀️'; }
+    function toggleTheme(){ body.classList.toggle('dark-mode'); localStorage.setItem('theme', body.classList.contains('dark-mode')?'dark':'light'); btn.innerText = body.classList.contains('dark-mode')?'☀️':'🌙'; if(myChart) myChart.update(); }
+    function updateUI(){ const mistMode = document.getElementById('mistMode'); if(!mistMode) return; const mode = mistMode.value; const autoDiv = document.getElementById('autoOpt'); const schedDiv = document.getElementById('schedOpt'); if (mode === 'auto') { autoDiv.classList.remove('hidden'); autoDiv.style.display='block'; schedDiv.classList.add('hidden'); schedDiv.style.display='none'; } else { autoDiv.classList.add('hidden'); autoDiv.style.display='none'; schedDiv.classList.remove('hidden'); schedDiv.style.display='block'; } }
+    const devId = "{{ settings.device_id }}"; const hasMist = {{ features.mist|yesno:"true,false" }};
+    window.onload = function() { updateUI(); loadChart('day', document.querySelector('.chart-btn.active')); };
+    let isEditing = false; document.querySelectorAll('input, select').forEach(el => { el.addEventListener('focus', () => isEditing = true); el.addEventListener('blur', () => isEditing = false); });
+    setInterval(function(){ if(!isEditing) window.location.reload(); }, 10000);
+    let myChart = null;
+    function loadChart(period, btnElement) { document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active')); if(btnElement) btnElement.classList.add('active'); fetch(`/api/history/${period}/?id=${devId}`).then(r => r.json()).then(data => { const ctx = document.getElementById('myChart').getContext('2d'); if (myChart) myChart.destroy(); let datasets = [{ label: 'Temp', data: data.temps, borderColor: '#d00000', borderWidth: 2, tension: 0.4, pointRadius:0, yAxisID: 'y' }]; let yScales = { x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } }, y: { position: 'left', title: {display:true, text:'°C'} } }; if(hasMist) { datasets.push({ label: 'Wilg', data: data.hums, borderColor: '#0077b6', borderWidth: 2, tension: 0.4, pointRadius:0, yAxisID: 'y1' }); yScales.y1 = { position: 'right', title: {display:true, text:'%'}, grid: {drawOnChartArea: false} }; } myChart = new Chart(ctx, { type: 'line', data: { labels: data.labels, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: yScales, plugins: { legend: { display: false } } } }); }); }
+</script>
+</body>
+</html>

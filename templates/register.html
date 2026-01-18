@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <title>Rejestracja - AnimalLogic</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #101412; color: white; font-family: 'Lato', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #1c2420; padding: 40px; border-radius: 20px; text-align: center; width: 300px; border: 1px solid #333; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #2d3430; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; }
+        input:focus { border-color: #52b788; outline: none; }
+        button { width: 100%; padding: 12px; background: #52b788; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem; }
+        button:hover { background: #40916c; }
+        a { color: #52b788; text-decoration: none; font-size: 0.9rem; }
+        h2 { color: #52b788; margin-top: 0; }
+        .error-list { color: #ff5400; font-size: 0.8rem; text-align: left; margin-bottom: 10px; list-style: none; padding: 0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Dołącz do nas</h2>
+
+        {% if form.errors %}
+            <ul class="error-list">
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <input type="text" name="username" placeholder="Wymyśl login" required>
+            <input type="password" name="password" placeholder="Hasło" required>
+            <input type="password" name="confirm_password" placeholder="Powtórz hasło" required>
+
+            <button type="submit">Utwórz konto</button>
+        </form>
+
+        <p style="margin-top:20px; font-size:0.85rem; color:#888;">
+            Masz już konto? <a href="{% url 'login' %}">Zaloguj się</a>
+        </p>
+    </div>
+</body>
+</html>

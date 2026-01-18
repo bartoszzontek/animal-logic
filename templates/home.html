@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <title>Moje Urządzenia - AnimalLogic</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { background: #101412; color: white; font-family: 'Lato', sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: #52b788; margin-bottom: 5px; }
+        .subtitle { color: #adb5bd; margin-top: 0; font-size: 0.9rem; }
+        
+        .device-card { background: #1c2420; padding: 20px; border-radius: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; transition: transform 0.2s; }
+        .device-card:hover { transform: translateY(-2px); border-color: #52b788; }
+        
+        .device-info h3 { margin: 0 0 5px 0; font-size: 1.2rem; }
+        .device-info p { margin: 0; color: #adb5bd; font-size: 0.8rem; font-family: monospace; }
+        
+        .actions { display: flex; gap: 10px; align-items: center; }
+        .btn { background: #2d6a4f; color: white; text-decoration: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
+        .btn:hover { background: #40916c; }
+        
+        .btn-del { background: #5c1b1b; color: #ffadad; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-del:hover { background: #d00000; color: white; }
+        
+        .btn-add-main { background: #52b788; color: #000; display: block; text-align: center; text-decoration: none; padding: 15px; font-weight: 900; border-radius: 12px; margin-top: 30px; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-add-main:hover { background: #74c69d; }
+
+        .logout { float: right; color: #ff5400; text-decoration: none; font-weight: bold; font-size: 0.9rem; margin-top: 10px; }
+        .alert { padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 0.9rem; }
+        .alert-error { background: #5c1b1b; color: #ffadad; }
+        .alert-success { background: #1b4d3e; color: #a3ffcf; }
+
+        /* Style dla statusu */
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-online { background-color: #52b788; box-shadow: 0 0 5px #52b788; }
+        .status-offline { background-color: #e63946; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if user.is_authenticated %}
+            <a href="{% url 'logout' %}" class="logout">Wyloguj</a>
+            <h1>Witaj, {{ user.username }}!</h1>
+        {% else %}
+            <a href="{% url 'login' %}" class="logout">Zaloguj</a>
+            <h1>Witaj, Nieznajomy!</h1>
+        {% endif %}
+        
+        <p class="subtitle">Panel zarządzania AnimalLogic</p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <h2 style="margin-top: 40px; border-bottom: 1px solid #333; padding-bottom: 10px;">Twoje Terraria</h2>
+        
+        {% for device in devices %}
+        <div class="device-card" {% if not device.is_active %}style="opacity: 0.6;"{% endif %}>
+            <div class="device-info">
+                <h3>{{ device.name }}</h3>
+                <p>ID: {{ device.device_id }}</p>
+                
+                <div style="margin-top: 8px; font-size: 0.8rem; font-weight: bold;">
+                    {% if device.is_active %}
+                        <span class="status-dot status-online"></span>
+                        <span style="color:#52b788;">ONLINE</span>
+                    {% else %}
+                        <span class="status-dot status-offline"></span>
+                        <span style="color:#e63946;">OFFLINE</span>
+                        <span style="color:#adb5bd; font-size: 0.7rem; font-weight: normal;">
+                            (Ostatni: {{ device.last_seen|date:"H:i:s" }})
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="actions">
+                <a href="{% url 'dashboard' device.device_id %}" class="btn">PANEL</a>
+                <form action="{% url 'delete_device' device.device_id %}" method="POST" onsubmit="return confirm('Usunąć urządzenie z konta?');" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-del">X</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+            <div style="text-align:center; padding: 40px; color: #555;">
+                <p>Nie masz jeszcze żadnych urządzeń.</p>
+            </div>
+        {% endfor %}
+
+        <a href="{% url 'add_device' %}" class="btn-add-main">+ Dodaj nowe urządzenie</a>
+    </div>
+
+    <script>
+        setTimeout(function(){
+           window.location.reload(1);
+        }, 30000);
+    </script>
+</body>
+</html>
