@@ -5,14 +5,25 @@ import datetime
 from datetime import timedelta
 import secrets
 
+import secrets
 
 class AllowedDevice(models.Model):
-    device_id = models.CharField(max_length=50, unique=True, db_index=True, verbose_name="ID Urządzenia")
-    pin_hash = models.CharField(max_length=255, verbose_name="Hash PINu")
-    created_at = models.DateTimeField(auto_now_add=True)
+    device_id = models.CharField(max_length=50, unique=True)
+    pin_hash = models.CharField(max_length=128)  # Tutaj trzymamy zahaszowany PIN
+
+    # --- NOWE POLE: TOKEN ---
+    api_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
+
+
+
+    def save(self, *args, **kwargs):
+        # Jeśli token nie istnieje, wygeneruj go automatycznie
+        if not self.api_token:
+            self.api_token = secrets.token_urlsafe(32)
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Whitelist: {self.device_id}"
+        return f"{self.device_id} (Token: {self.api_token[:10]}...)"
 
 
 class Terrarium(models.Model):
