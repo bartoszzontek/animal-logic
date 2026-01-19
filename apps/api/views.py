@@ -11,10 +11,10 @@ from datetime import timedelta
 import json
 import secrets
 
-# Upewnij się, że masz te modele w apps/core/models.py
 from apps.core.models import Terrarium, Reading, AllowedDevice
 
 
+# --- Widok do autoryzacji początkowej (opcjonalny, jeśli używasz ręcznych tokenów) ---
 @method_decorator(csrf_exempt, name='dispatch')
 class DeviceAuthView(View):
     def post(self, request):
@@ -23,69 +23,62 @@ class DeviceAuthView(View):
             dev_id = data.get('id')
             pin = data.get('pin')
 
-            # Sprawdź czy urządzenie jest na liście dozwolonych (AllowedDevice)
             try:
                 allowed = AllowedDevice.objects.get(device_id=dev_id)
             except AllowedDevice.DoesNotExist:
                 return JsonResponse({'error': 'Device not allowed'}, status=403)
 
-            # Sprawdź PIN
             if not check_password(str(pin), allowed.pin_hash):
                 return JsonResponse({'error': 'Invalid PIN'}, status=403)
 
-            # Utwórz lub pobierz Terrarium
-            device, created = Terrarium.objects.get_or_create(device_id=dev_id)
+            # Zwracamy token (jeśli istnieje)
+            if allowed.api_token:
+                return JsonResponse({'token': allowed.api_token})
+            else:
+                return JsonResponse({'error': 'Token not generated in Admin'}, status=400)
 
-            # Generowanie tokenu urządzenia (opcjonalne, jeśli używamy Shared Secret)
-            if not device.api_token:
-                device.api_token = secrets.token_urlsafe(32)
-                device.save()
-
-            return JsonResponse({'token': device.api_token})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
 
+# --- GŁÓWNY WIDOK AKTUALIZACJI IOT ---
 @method_decorator(csrf_exempt, name='dispatch')
 class IoTUpdateView(View):
     def post(self, request):
-        # 1. AUTORYZACJA (TOKEN Z SETTINGS.PY)
-        # To pasuje do Twojego ESP i skryptu simulateon.py
+        # 1. AUTORYZACJA (TOKEN Z BAZY DANYCH - ALLOWED DEVICE)
         auth_header = request.headers.get('Authorization')
-        expected_token = f"Bearer {settings.SENSOR_API_TOKEN}"
 
-        if not auth_header or auth_header != expected_token:
-            return JsonResponse({'error': 'Invalid or Missing Token'}, status=401)
+        # Oczekujemy nagłówka: "Bearer TWOJ_DLUGI_TOKEN"
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JsonResponse({'error': 'Missing or Invalid Token Header'}, status=401)
+
+        token = auth_header.split(" ")[1]  # Wyciągamy sam kod po spacji
 
         try:
-            # 2. POBRANIE DANYCH
+            # Szukamy urządzenia w tabeli AllowedDevice po TOKENIE
+            # To zapewnia, że tylko urządzenia dodane w Adminie mogą się łączyć
+            allowed = AllowedDevice.objects.get(api_token=token)
+            dev_id = allowed.device_id
+        except AllowedDevice.DoesNotExist:
+            return JsonResponse({'error': 'Unauthorized: Invalid Token'}, status=401)
+
+        try:
+            # 2. POBRANIE DANYCH Z JSON
             data = json.loads(request.body)
-            dev_id = data.get('id')
-            pin = data.get('pin')
+            # Uwaga: dev_id bierzemy z bazy (bezpieczniej), a nie z JSONa
+            # pin też nie jest potrzebny, bo mamy token
+
             temp = float(data.get('temp'))
             hum = float(data.get('hum'))
 
-            # 3. WERYFIKACJA URZĄDZENIA W BAZIE
+            # 3. POBRANIE LUB UTWORZENIE TERRARIUM
             try:
-                # Szukamy urządzenia po ID (D1001), żeby pobrać jego ustawienia
                 device = Terrarium.objects.get(device_id=dev_id)
             except Terrarium.DoesNotExist:
-                # Jeśli nie ma w Terrarium, sprawdźmy w AllowedDevice i utwórzmy
-                if AllowedDevice.objects.filter(device_id=dev_id).exists():
-                    device = Terrarium.objects.create(device_id=dev_id, name=f"New {dev_id}")
-                else:
-                    return JsonResponse({'error': 'Device not found'}, status=404)
-
-            # Opcjonalnie: Sprawdź PIN z AllowedDevice dla bezpieczeństwa
-            try:
-                allowed = AllowedDevice.objects.get(device_id=dev_id)
-                if not check_password(str(pin), allowed.pin_hash):
-                    return JsonResponse({'error': 'Invalid PIN'}, status=403)
-            except AllowedDevice.DoesNotExist:
-                pass  # Jeśli nie ma w Allowed, ale jest w Terrarium, puszczamy (zależy od Twojej logiki)
+                # Jeśli to pierwsze połączenie poprawnego urządzenia -> tworzymy je
+                device = Terrarium.objects.create(device_id=dev_id, name=f"Terrarium {dev_id}")
 
             # --- LOGIKA BIZNESOWA (TWOJA) ---
-
             now = timezone.localtime()
             now_time = now.time()
 
@@ -169,7 +162,7 @@ class IoTUpdateView(View):
                 'heater': heater_on,
                 'mist': mist_on,
                 'light': light_on,
-                'screen': True,  # Wymuszamy włączenie ekranu
+                'screen': True,
                 'name': device.name
             })
 
