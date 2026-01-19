@@ -4,26 +4,22 @@ from django.utils import timezone
 import datetime
 from datetime import timedelta
 import secrets
-
-import secrets
+from django.db import models
 
 class AllowedDevice(models.Model):
     device_id = models.CharField(max_length=50, unique=True)
-    pin_hash = models.CharField(max_length=128)  # Tutaj trzymamy zahaszowany PIN
-
-    # --- NOWE POLE: TOKEN ---
+    pin_hash = models.CharField(max_length=128)
     api_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
 
-
-
     def save(self, *args, **kwargs):
-        # Jeśli token nie istnieje, wygeneruj go automatycznie
         if not self.api_token:
             self.api_token = secrets.token_urlsafe(32)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.device_id} (Token: {self.api_token[:10]}...)"
+        # ZABEZPIECZENIE: Jeśli token istnieje, skracamy go. Jeśli nie, piszemy "BRAK".
+        token_str = self.api_token[:10] if self.api_token else "BRAK"
+        return f"{self.device_id} (Token: {token_str}...)"
 
 
 class Terrarium(models.Model):
