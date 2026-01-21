@@ -7,11 +7,11 @@ URL = "https://animal.zipit.pl/api/sensor/update"
 # Zwróć uwagę na HTTPS - Cloudflare tego wymaga
 
 # Twój token
-TOKEN = "dI-Fdlp40BeaJWzaEPBPnHh0afiz_5EvKaOqjZGgeYc"
+TOKEN = "dtAbNTU4efpCqBDQhFzb1ixyQcNy73IXlLfHIe8JWRk"
 
 # Dane urządzenia (Musi pasować do tego co w bazie!)
 DEVICE_ID = "A1001"
-PIN = "1234"
+PIN = "12345"
 
 payload = {
     "id": DEVICE_ID,
