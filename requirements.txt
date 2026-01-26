@@ -6,3 +6,5 @@ gunicorn>=21.2            # Serwer produkcyjny
 pytz                      # Strefy czasowe
 gunicorn
 psycopg2-binary
+pytest
+pytest-django

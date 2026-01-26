@@ -7,7 +7,7 @@ from .views import (
 )
 
 urlpatterns = [
-    # Główny endpoint dla ESP (wysyłanie pomiarów)
+    # Główny endpoint dla ESP (wysyłanie pomiarów)1
     path('sensor/update', IoTUpdateView.as_view(), name='sensor_update'),
 
     # Endpoint do pobierania danych na wykres (Frontend)
