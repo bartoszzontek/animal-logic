@@ -51,7 +51,7 @@ def test_user_cannot_toggle_others_light(client, other_user, terrarium):
     SCENARIUSZ: Hacker próbuje włączyć światło u sąsiada.
     """
     client.force_login(other_user)
-    url = reverse('toggle_light', args=[terrarium.device_id])
+    url = reverse('toggle_light_state', args=[terrarium.device_id])
 
     response = client.get(url)
     assert response.status_code == 404
