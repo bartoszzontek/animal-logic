@@ -4,10 +4,11 @@ import random
 import os
 
 # --- KONFIGURACJA ---
+# Upewnij się, że port jest dobry (zazwyczaj 8000 dla Django lokalnie)
 API_URL = "http://127.0.0.1:8000/api"
 DEVICE_ID = "A1001"
-DEVICE_PIN = "1234"  # To musi być zgodne z AllowedDevices!
-TOKEN_FILE = "device_token.txt"
+DEVICE_PIN = "1234"
+TOKEN_FILE = "token_file.txt"
 
 
 class SecureSimulator:
@@ -23,13 +24,15 @@ class SecureSimulator:
     def load_token(self):
         if os.path.exists(TOKEN_FILE):
             with open(TOKEN_FILE, "r") as f:
-                return f.read().strip()
+                t = f.read().strip()
+                if t: return t
         return None
 
     def authenticate(self):
         print(f"🔑 Brak tokena. Próba logowania dla {DEVICE_ID}...")
         try:
-            resp = requests.post(f"{API_URL}/auth", json={
+            # POPRAWKA 1: Adres URL musi pasować do urls.py (path('auth/device', ...))
+            resp = requests.post(f"{API_URL}/auth/device", json={
                 "id": DEVICE_ID,
                 "pin": DEVICE_PIN
             })
@@ -44,7 +47,7 @@ class SecureSimulator:
                 print(f"❌ Błąd logowania: {resp.text}")
                 return False
         except Exception as e:
-            print(f"❌ Błąd połączenia: {e}")
+            print(f"❌ Błąd połączenia (Auth): {e}")
             return False
 
     def print_status(self):
@@ -68,7 +71,7 @@ class SecureSimulator:
                     time.sleep(5)
                     continue
 
-            # 2. Fizyka
+            # 2. Fizyka (symulacja zmian temperatury)
             if self.heater_on:
                 self.current_temp += 0.4 + random.uniform(-0.1, 0.1)
             else:
@@ -79,16 +82,22 @@ class SecureSimulator:
             else:
                 if self.current_hum > 30.0: self.current_hum -= 0.5
 
-            # Ograniczenia
+            # Ograniczenia zakresu
             self.current_temp = max(15.0, min(60.0, self.current_temp))
             self.current_hum = max(0.0, min(100.0, self.current_hum))
 
-            # 3. Wyślij dane (z Tokenem w nagłówku!)
+            # 3. Wyślij dane
             payload = {"temp": round(self.current_temp, 2), "hum": round(self.current_hum, 2)}
-            headers = {"X-Device-Token": self.token}
+
+            # POPRAWKA 2: Nagłówek musi być 'Authorization: Bearer <token>'
+            # Twój backend sprawdza: request.headers.get('Authorization').startswith("Bearer ")
+            headers = {
+                "Authorization": f"Bearer {self.token}",
+                "Content-Type": "application/json"
+            }
 
             try:
-                print(f"📡 Wysyłam (Auth)... ", end="")
+                print(f"📡 Wysyłam... ", end="")
                 resp = requests.post(f"{API_URL}/sensor/update", json=payload, headers=headers, timeout=2)
 
                 if resp.status_code == 200:
@@ -102,14 +111,18 @@ class SecureSimulator:
                     self.print_status()
 
                 elif resp.status_code == 401:
-                    print("❌ Token wygasł lub nieprawidłowy! Usuwam plik.")
+                    print(f"❌ Błąd 401 (Unauthorized). Token wygasł? Usuwam plik.")
                     self.token = None
                     if os.path.exists(TOKEN_FILE): os.remove(TOKEN_FILE)
+
+                elif resp.status_code == 400:
+                    print(f"❌ Błąd 400 (Bad Request). Złe dane: {resp.text}")
+
                 else:
                     print(f"❌ Błąd serwera: {resp.status_code} - {resp.text}")
 
             except Exception as e:
-                print(f"\n❌ Błąd: {e}")
+                print(f"\n❌ Błąd połączenia: {e}")
 
             time.sleep(2)
 

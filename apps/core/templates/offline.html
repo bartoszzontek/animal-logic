@@ -1,9 +1,133 @@
 <!DOCTYPE html>
-<html>
-<head><title>Offline</title></head>
-<body style="background:#111; color:white; text-align:center; padding:50px;">
-  <h1>OFFLINE</h1>
-  <p>Brak połączenia z internetem</p>
-  <button onclick="window.location.reload()">Odśwież</button>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jesteś Offline - AnimalLogic</title>
+    <style>
+        :root {
+            --bg-color: #101412;
+            --card-bg: #1e2321;
+            --text-color: #e0e0e0;
+            --subtext-color: #a0a0a0;
+            --primary-color: #2d6a4f;
+            --primary-hover: #40916c;
+            --error-color: #e63946;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid #333;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .icon-container {
+            margin-bottom: 20px;
+            position: relative;
+            display: inline-block;
+        }
+
+        /* Ikona WiFi SVG */
+        .wifi-icon {
+            width: 80px;
+            height: 80px;
+            fill: var(--subtext-color);
+            opacity: 0.5;
+        }
+        
+        .wifi-cross {
+            fill: var(--error-color);
+            animation: pulse 2s infinite;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        p {
+            color: var(--subtext-color);
+            margin-bottom: 30px;
+            line-height: 1.5;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(45, 106, 79, 0.4);
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(45, 106, 79, 0.6);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; transform: scale(0.95); }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.6; transform: scale(0.95); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon-container">
+            <svg class="wifi-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l10.08 12.56c.8 1 2.32 1 3.12 0L23.64 7z" fill-opacity="0.3"/>
+                <path class="wifi-cross" d="M3.5 3.5L20.5 20.5M20.5 3.5L3.5 20.5" stroke="#e63946" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        
+        <h1>Jesteś Offline</h1>
+        <p>Nie masz dostępu do internetu.<br>Dane z terrarium nie są aktualizowane.</p>
+        
+        <button onclick="window.location.reload()">Spróbuj ponownie</button>
+    </div>
 </body>
 </html>
