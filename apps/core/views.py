@@ -168,11 +168,6 @@ def history_data(request, period):
         hums.append(r['hum'])
     return JsonResponse({'labels': labels, 'temps': temps, 'hums': hums})
 
-
-# --- PWA (TEGO BRAKOWAŁO LUB BYŁO NIEPODPIĘTE) ---
-
-# apps/core/views.py
-
 def manifest_view(request):
     return render(request, 'manifest.json', content_type='application/json')
 

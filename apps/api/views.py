@@ -2,6 +2,7 @@ import os
 import json
 import secrets
 from datetime import timedelta
+from json import JSONDecodeError
 
 from django.conf import settings
 from django.shortcuts import get_object_or_404
@@ -18,7 +19,7 @@ from django.db.models import Avg
 from apps.core.models import Terrarium, Reading, AllowedDevice
 
 
-# --- WIDOKI POMOCNICZE ---
+
 
 def chart_data_view(request, device_id):
     """
@@ -41,7 +42,6 @@ def chart_data_view(request, device_id):
         'hums': [float(r.hum) for r in readings]
     }
     return JsonResponse(data)
-
 
 def download_firmware(request, filename):
     """
@@ -67,14 +67,9 @@ def download_firmware(request, filename):
         raise Http404("Firmware not found")
 
 
-# --- WIDOKI KLASOWE ---
 
 @method_decorator(csrf_exempt, name='dispatch')
 class DeviceAuthView(View):
-    """
-    Widok opcjonalny - jeśli chciałbyś automatycznie generować tokeny na podstawie PINu.
-    Obecnie Twój ESP używa tokena wpisanego na sztywno, ale to może się przydać w przyszłości.
-    """
 
     def post(self, request):
         try:
@@ -123,9 +118,24 @@ class IoTUpdateView(View):
 
         try:
             # 2. DANE Z ESP
-            data = json.loads(request.body)
-            temp = float(data.get('temp'))
-            hum = float(data.get('hum'))
+
+            try:
+                data = json.loads(request.body)
+            except JSONDecodeError:
+                return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+
+            # Walidacja danych wejściowych
+            raw_temp = data.get('temp')
+            raw_hum = data.get('hum')
+
+            if raw_temp is None or raw_hum is None:
+                return JsonResponse({'error': 'Missing required fields: temp, hum'}, status=400)
+
+            try:
+                temp = float(raw_temp)
+                hum = float(raw_hum)
+            except (ValueError, TypeError):
+                return JsonResponse({'error': 'Fields temp and hum must be numbers'}, status=400)
 
             # 3. POBRANIE URZĄDZENIA
             device, created = Terrarium.objects.get_or_create(
@@ -138,38 +148,39 @@ class IoTUpdateView(View):
             now_time = now.time()
 
             # A. ALERTY EMAIL
-            if device.alerts_enabled:
-                recipient_email = device.alert_email or (device.owner.email if device.owner else None)
+            if device.alerts_enabled and device.alert_email:
+                should_send = False
+                subject = ""
 
-                if recipient_email:
-                    # Cooldown 1h
-                    cooldown_passed = True
-                    if device.last_alert_sent:
-                        if now - device.last_alert_sent < timedelta(hours=1):
-                            cooldown_passed = False
+                # Sprawdzamy czy minął czas karencji (np. 15 minut)
+                cooldown = True
+                if device.last_alert_sent:
+                    if timezone.now() - device.last_alert_sent < timedelta(minutes=15):
+                        cooldown = False
 
-                    if cooldown_passed:
-                        alert_subject = None
-                        alert_msg = None
+                if cooldown:
+                    if temp > device.alert_max_temp:
+                        should_send = True
+                        subject = f"ALARM: {device.name} - Wysoka Temperatura!"
+                        msg = f"Temperatura wzrosła do {temp}°C! (Limit: {device.alert_max_temp}°C)"
+                    elif temp < device.alert_min_temp:
+                        should_send = True
+                        subject = f"ALARM: {device.name} - Niska Temperatura!"
+                        msg = f"Temperatura spadła do {temp}°C! (Limit: {device.alert_min_temp}°C)"
 
-                        if temp < device.alert_min_temp:
-                            alert_subject = f"🚨 ALARM: Niska temperatura w {device.name}!"
-                            alert_msg = f"Aktualna: {temp}°C (Min: {device.alert_min_temp}°C)."
-                        elif temp > device.alert_max_temp:
-                            alert_subject = f"🚨 ALARM: Wysoka temperatura w {device.name}!"
-                            alert_msg = f"Aktualna: {temp}°C (Max: {device.alert_max_temp}°C)."
-
-                        if alert_subject:
-                            print(f"📧 Sending mail to {recipient_email}")
-                            try:
-                                send_mail(
-                                    alert_subject, alert_msg, 'system@animallogic.pl',
-                                    [recipient_email], fail_silently=False,
-                                )
-                                device.last_alert_sent = now
-                                device.save(update_fields=['last_alert_sent'])
-                            except Exception as e:
-                                print(f"❌ Mail error: {e}")
+                    if should_send:
+                        try:
+                            send_mail(
+                                subject,
+                                msg,
+                                'system@animal.zipit.pl',  # Nadawca (musi być w settings.py lub taki)
+                                [device.alert_email],
+                                fail_silently=True
+                            )
+                            device.last_alert_sent = timezone.now()
+                            device.save()
+                        except Exception as e:
+                            print(f"Błąd wysyłania maila: {e}")
 
             # B. STEROWANIE (LOGIKA)
 

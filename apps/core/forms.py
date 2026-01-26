@@ -18,7 +18,6 @@ class RegisterForm(forms.ModelForm):
             raise forms.ValidationError("Hasła nie są identyczne.")
         return cleaned_data
 
-
 class AddDeviceForm(forms.Form):
     device_id = forms.CharField(label="ID Urządzenia (np. A1001)", max_length=50)
     pin = forms.CharField(label="PIN z naklejki", widget=forms.PasswordInput)
@@ -44,11 +43,6 @@ class AddDeviceForm(forms.Form):
 
         return cleaned_data
 
-
-# apps/core/forms.py
-
-# ... (góra pliku bez zmian) ...
-
 class TerrariumSettingsForm(forms.ModelForm):
     class Meta:
         model = Terrarium
@@ -61,3 +55,10 @@ class TerrariumSettingsForm(forms.ModelForm):
             # Dodaj alert_email tutaj:
             'alerts_enabled', 'alert_email', 'alert_min_temp', 'alert_max_temp'
         ]
+    def clean(self):
+            cleaned_data = super().clean()
+            min_t = cleaned_data.get("alert_min_temp")
+            max_t = cleaned_data.get("alert_max_temp")
+
+            if min_t and max_t and min_t >= max_t:
+                raise forms.ValidationError("Minimalna temperatura alarmu musi być niższa niż maksymalna!")
