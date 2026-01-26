@@ -1,49 +1,147 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <title>Rejestracja - AnimalLogic</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#101412">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { background: #101412; color: white; font-family: 'Lato', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #1c2420; padding: 40px; border-radius: 20px; text-align: center; width: 300px; border: 1px solid #333; }
-        input { width: 100%; padding: 12px; margin: 10px 0; background: #2d3430; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; }
-        input:focus { border-color: #52b788; outline: none; }
-        button { width: 100%; padding: 12px; background: #52b788; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem; }
-        button:hover { background: #40916c; }
-        a { color: #52b788; text-decoration: none; font-size: 0.9rem; }
-        h2 { color: #52b788; margin-top: 0; }
-        .error-list { color: #ff5400; font-size: 0.8rem; text-align: left; margin-bottom: 10px; list-style: none; padding: 0; }
+        body { 
+            background: #101412; 
+            color: white; 
+            font-family: 'Outfit', sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px; /* Padding na wypadek małych ekranów */
+            box-sizing: border-box;
+        }
+        
+        .card { 
+            background: #1c2420; 
+            padding: 40px; 
+            border-radius: 24px; 
+            text-align: center; 
+            width: 100%; 
+            max-width: 340px; 
+            border: 1px solid #333; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6); 
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Logo (opcjonalne, dla spójności) */
+        .reg-logo { width: 60px; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(82, 183, 136, 0.3)); }
+        
+        input { 
+            width: 100%; 
+            padding: 14px; 
+            margin: 8px 0; 
+            background: #2d3430; 
+            border: 1px solid #444; 
+            color: white; 
+            border-radius: 12px; 
+            box-sizing: border-box; 
+            font-size: 1rem; 
+            transition: 0.3s; 
+        }
+        
+        input:focus { 
+            border-color: #52b788; 
+            outline: none; 
+            background: #222; 
+            box-shadow: 0 0 0 4px rgba(82, 183, 136, 0.1);
+        }
+        
+        button { 
+            width: 100%; 
+            padding: 15px; 
+            background: linear-gradient(135deg, #52b788 0%, #2d6a4f 100%); 
+            color: white; 
+            border: none; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            margin-top: 20px; 
+            font-size: 1rem; 
+            transition: transform 0.2s, box-shadow 0.2s; 
+        }
+        
+        button:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 15px rgba(45, 106, 79, 0.4);
+        }
+        
+        a { color: #52b788; text-decoration: none; font-size: 0.9rem; font-weight: bold; transition: 0.2s; }
+        a:hover { color: #74c69d; }
+        
+        h2 { color: white; margin-top: 0; margin-bottom: 5px; font-size: 1.5rem; }
+        p { color: #adb5bd; font-size: 0.9rem; margin-top: 0; margin-bottom: 25px; }
+
+        /* Stylizacja listy błędów */
+        .error-box {
+            background: rgba(230, 57, 70, 0.15);
+            border: 1px solid rgba(230, 57, 70, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .error-list { 
+            color: #ff9f9f; 
+            font-size: 0.85rem; 
+            margin: 0; 
+            padding-left: 20px; 
+        }
+        .error-list li { margin-bottom: 5px; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
     <div class="card">
+        <img src="{% static 'anima.png' %}" alt="Logo" class="reg-logo" onerror="this.style.display='none'">
+        
         <h2>Dołącz do nas</h2>
+        <p>Stwórz konto w AnimalLogic</p>
 
         {% if form.errors %}
-            <ul class="error-list">
-            {% for field in form %}
-                {% for error in field.errors %}
+            <div class="error-box">
+                <ul class="error-list">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
                     <li>{{ error }}</li>
                 {% endfor %}
-            {% endfor %}
-            {% for error in form.non_field_errors %}
-                <li>{{ error }}</li>
-            {% endfor %}
-            </ul>
+                </ul>
+            </div>
         {% endif %}
 
         <form method="POST">
             {% csrf_token %}
-            <input type="text" name="username" placeholder="Wymyśl login" required>
-            <input type="password" name="password" placeholder="Hasło" required>
-            <input type="password" name="confirm_password" placeholder="Powtórz hasło" required>
+            
+            <input type="text" name="username" placeholder="Wymyśl login" required autocapitalize="none" autocomplete="username">
+            
+            <input type="email" name="email" placeholder="Adres Email" required autocomplete="email">
+            
+            <input type="password" name="password" placeholder="Hasło" required autocomplete="new-password">
+            <input type="password" name="confirm_password" placeholder="Powtórz hasło" required autocomplete="new-password">
 
             <button type="submit">Utwórz konto</button>
         </form>
 
-        <p style="margin-top:20px; font-size:0.85rem; color:#888;">
-            Masz już konto? <a href="{% url 'login' %}">Zaloguj się</a>
+        <p style="margin-top:25px; margin-bottom:0; font-size:0.85rem; color:#666;">
+            Masz już konto? <br><a href="{% url 'login' %}" style="margin-top:5px; display:inline-block;">Zaloguj się tutaj</a>
         </p>
     </div>
 </body>

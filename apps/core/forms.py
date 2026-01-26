@@ -50,10 +50,8 @@ class TerrariumSettingsForm(forms.ModelForm):
             'name',
             'temp_day', 'temp_night',
             'light_start', 'light_end', 'light_mode',
-            'mist_mode', 'mist_duration', 'mist_min_humidity',
-            'mist_h1', 'mist_h2', 'mist_h3', 'mist_h4',
-            # Dodaj alert_email tutaj:
-            'alerts_enabled', 'alert_email', 'alert_min_temp', 'alert_max_temp'
+            'mist_enabled', 'mist_mode', 'mist_duration', 'mist_min_humidity',
+            'alerts_enabled', 'alert_min_temp', 'alert_max_temp', 'alert_email'
         ]
     def clean(self):
             cleaned_data = super().clean()

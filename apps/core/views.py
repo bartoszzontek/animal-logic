@@ -176,3 +176,19 @@ def service_worker_view(request):
 
 def offline_view(request):
     return render(request, 'offline.html')
+
+
+@login_required
+def account_settings(request):
+    if request.method == "POST":
+        email = request.POST.get('email')
+        # Prosta walidacja i zapis
+        if email:
+            request.user.email = email
+            request.user.save()
+            messages.success(request, "Adres email został zaktualizowany.")
+        else:
+            messages.error(request, "Podaj poprawny adres email.")
+        return redirect('account_settings')
+
+    return render(request, 'account_settings.html', {'user': request.user})

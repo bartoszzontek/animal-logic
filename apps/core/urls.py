@@ -1,6 +1,7 @@
 from django.urls import path
 from django.views.generic import TemplateView  # <--- WAŻNE: Dodaj ten import!
 from . import views
+from .views import account_settings
 
 urlpatterns = [
     # Auth
@@ -32,6 +33,8 @@ urlpatterns = [
     ), name='service_worker'),
 
     path('offline/', TemplateView.as_view(template_name='offline.html'), name='offline'),
+
+    path('account/', account_settings, name='account_settings'),
 
     # Home
     path('', views.home, name='home'),

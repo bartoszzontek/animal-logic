@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 0 auto;">
+    <h1 style="margin-bottom: 30px;">Twoje Konto</h1>
+
+    <div class="card" style="background: var(--bg-card); padding: 30px; border-radius: 16px; border: 1px solid #333;">
+        <form method="POST">
+            {% csrf_token %}
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: var(--text-muted); margin-bottom: 8px;">Nazwa użytkownika</label>
+                <input type="text" value="{{ user.username }}" disabled
+                       style="width: 100%; padding: 12px; background: #111; border: 1px solid #333; color: #666; border-radius: 8px; cursor: not-allowed;">
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <label style="display: block; color: var(--text-muted); margin-bottom: 8px;">Email do powiadomień</label>
+                <input type="email" name="email" value="{{ user.email }}"
+                       style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #444; color: white; border-radius: 8px;">
+                <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">Służy do wysyłania alertów o temperaturze.</p>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 15px;">Zapisz Zmiany</button>
+        </form>
+
+        <hr style="border: 0; border-top: 1px solid #333; margin: 30px 0;">
+
+        <h3 style="color: var(--danger); font-size: 1.1rem;">Strefa Niebezpieczna</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Wyloguj się z urządzenia.</p>
+        <a href="{% url 'logout' %}" style="color: var(--danger); text-decoration: none; font-weight: bold; border: 1px solid var(--danger); padding: 10px 20px; border-radius: 8px; display: inline-block; margin-top: 10px;">Wyloguj się</a>
+    </div>
+</div>
+{% endblock %}

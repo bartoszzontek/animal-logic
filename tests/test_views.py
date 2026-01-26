@@ -255,4 +255,4 @@ def test_offline_view(client):
     url = reverse('offline')
     response = client.get(url)
     assert response.status_code == 200
-    assert "Brak połączenia z internetem" in response.content.decode()
+    assert "Nie masz dostępu do internetu." in response.content.decode()
