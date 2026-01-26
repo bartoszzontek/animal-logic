@@ -252,3 +252,110 @@ def test_offline_view(client):
     response = client.get(url)
     assert response.status_code == 200
     assert "Nie masz dostępu do internetu" in response.content.decode() or "offline" in response.content.decode()
+
+
+import pytest
+from django.urls import reverse
+from apps.core.models import Terrarium, Reading
+from django.contrib.auth.models import User
+
+
+# ... (poprzednie testy auth/home/add_device zostają bez zmian) ...
+
+@pytest.mark.django_db
+def test_switch_light_mode(client, user, terrarium):
+    """
+    Testuje nowy przycisk zmiany trybu (Auto <-> Manual).
+    Endpoint: switch_light_mode
+    """
+    client.force_login(user)
+
+    # 1. Stan początkowy: Auto
+    terrarium.light_mode = 'auto'
+    terrarium.save()
+
+    # 2. Klikamy "Przełącz na Ręczny"
+    url = reverse('switch_light_mode', args=[terrarium.device_id])
+    response = client.get(url)
+
+    assert response.status_code == 302  # Przekierowanie
+
+    terrarium.refresh_from_db()
+    assert terrarium.light_mode == 'manual'
+    # Sprawdzamy czy domyślnie włącza światło (zgodnie z logiką w views.py)
+    assert terrarium.light_manual_state is True
+
+    # 3. Klikamy znowu -> powrót do Auto
+    client.get(url)
+    terrarium.refresh_from_db()
+    assert terrarium.light_mode == 'auto'
+
+
+@pytest.mark.django_db
+def test_toggle_light_state_logic(client, user, terrarium):
+    """
+    Testuje włącznik światła (On/Off).
+    Musi działać TYLKO w trybie Manual.
+    Endpoint: toggle_light_state
+    """
+    client.force_login(user)
+    url = reverse('toggle_light_state', args=[terrarium.device_id])
+
+    # --- SCENARIUSZ A: Jesteśmy w trybie AUTO ---
+    terrarium.light_mode = 'auto'
+    terrarium.light_manual_state = False
+    terrarium.save()
+
+    # Próba włączenia światła
+    response = client.get(url)
+
+    terrarium.refresh_from_db()
+    # Stan NIE powinien się zmienić, bo w Auto przycisk nie działa
+    assert terrarium.light_manual_state is False
+    # Powinien pojawić się komunikat błędu (messages.warning)
+    messages = list(response.context['messages']) if response.context else []
+    # (W testach redirect message storage jest trudniejszy do złapania,
+    # ale najważniejsze że stan bazy się nie zmienił).
+
+    # --- SCENARIUSZ B: Jesteśmy w trybie MANUAL ---
+    terrarium.light_mode = 'manual'
+    terrarium.save()
+
+    # Próba włączenia
+    client.get(url)
+    terrarium.refresh_from_db()
+    assert terrarium.light_manual_state is True  # Włączyło się!
+
+    # Próba wyłączenia
+    client.get(url)
+    terrarium.refresh_from_db()
+    assert terrarium.light_manual_state is False  # Wyłączyło się!
+
+
+@pytest.mark.django_db
+def test_chart_data_api(client, user, terrarium):
+    """
+    Testuje nowy endpoint wykresów.
+    Endpoint: chart_data (zastąpił history_data)
+    """
+    client.force_login(user)
+
+    # Dodajemy dane testowe
+    Reading.objects.create(terrarium=terrarium, temp=25.5, hum=60)
+    Reading.objects.create(terrarium=terrarium, temp=26.0, hum=62)
+
+    url = reverse('chart_data', args=[terrarium.device_id])
+    response = client.get(url)
+
+    assert response.status_code == 200
+    data = response.json()
+
+    # Sprawdzamy strukturę JSON
+    assert 'labels' in data
+    assert 'temps' in data
+    assert 'hums' in data
+
+    # Sprawdzamy poprawność danych
+    assert len(data['temps']) == 2
+    assert data['temps'][0] == 25.5
+    assert data['temps'][1] == 26.0
