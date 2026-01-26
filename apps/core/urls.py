@@ -1,41 +1,34 @@
 from django.urls import path
-from django.views.generic import TemplateView  # <--- WAŻNE: Dodaj ten import!
 from . import views
-from .views import account_settings
 
 urlpatterns = [
-    # Auth
+    # --- AUTH ---
     path('register/', views.register_view, name='register'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
 
-    # Dashboard
-    path('dashboard/<str:device_id>/', views.dashboard, name='dashboard'),
-    path('dashboard/<str:device_id>/toggle-light/', views.toggle_light, name='toggle_light'),
-
-    # Zarządzanie
+    # --- HOME & URZĄDZENIA ---
+    path('', views.home, name='home'),
     path('add/', views.add_device, name='add_device'),
     path('delete/<str:device_id>/', views.delete_device, name='delete_device'),
 
-    # API Wykresów
-    path('api/history/<str:period>/', views.history_data, name='history_data'),
+    # --- DASHBOARD & STEROWANIE ---
+    path('dashboard/<str:device_id>/', views.dashboard, name='dashboard'),
 
-    # --- PWA (POPRAWIONE) ---
-    # Używamy TemplateView bezpośrednio tutaj, żeby nie babrać się w views.py
-    path('manifest.json', TemplateView.as_view(
-        template_name='manifest.json',
-        content_type='application/json'  # To jest kluczowe dla Androida/Chrome!
-    ), name='manifest'),
+    # --- NOWE STEROWANIE ŚWIATŁEM (Poprawka błędu) ---
+    # Zamiast starego toggle_light, mamy teraz dwie ścieżki:
+    path('mode-light/<str:device_id>/', views.switch_light_mode, name='switch_light_mode'),  # Zmiana Auto/Manual
+    path('toggle-light/<str:device_id>/', views.toggle_light_state, name='toggle_light_state'),
+    # Włącz/Wyłącz (tylko manual)
 
-    path('sw.js', TemplateView.as_view(
-        template_name='sw.js',
-        content_type='application/javascript' # To jest kluczowe dla działania Workera!
-    ), name='service_worker'),
+    # --- API (WYKRESY) ---
+    path('api/chart/<str:device_id>/', views.chart_data, name='chart_data'),
 
-    path('offline/', TemplateView.as_view(template_name='offline.html'), name='offline'),
+    # --- USTAWIENIA KONTA ---
+    path('account/', views.account_settings, name='account_settings'),
 
-    path('account/', account_settings, name='account_settings'),
-
-    # Home
-    path('', views.home, name='home'),
+    # --- PWA (Offline & Mobile) ---
+    path('manifest.json', views.manifest_view, name='manifest'),
+    path('sw.js', views.service_worker_view, name='service_worker'),
+    path('offline/', views.offline_view, name='offline'),
 ]

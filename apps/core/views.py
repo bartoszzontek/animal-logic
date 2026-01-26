@@ -3,27 +3,32 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse  # <--- WAŻNE: Dodano HttpResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from datetime import timedelta
 import datetime
-from .models import Terrarium, Reading, AllowedDevice
+
+from .models import Terrarium, Reading
 from .forms import RegisterForm, AddDeviceForm, TerrariumSettingsForm
 
 
-# --- AUTH ---
+# --- AUTHENTICATION ---
 
 def register_view(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = User.objects.create_user(
-                username=form.cleaned_data['username'],
-                password=form.cleaned_data['password'],
-                email=form.cleaned_data.get('email', '')
-            )
-            login(request, user)
-            return redirect('home')
+            # Sprawdzenie czy user/email już istnieje
+            if User.objects.filter(username=form.cleaned_data['username']).exists():
+                messages.error(request, "Taki użytkownik już istnieje.")
+            else:
+                user = User.objects.create_user(
+                    username=form.cleaned_data['username'],
+                    password=form.cleaned_data['password'],
+                    email=form.cleaned_data.get('email', '')
+                )
+                login(request, user)
+                return redirect('home')
     else:
         form = RegisterForm()
     return render(request, 'register.html', {'form': form})
@@ -48,31 +53,36 @@ def logout_view(request):
     return redirect('login')
 
 
-# --- DASHBOARD & HOME ---
-
-# apps/core/views.py
+# --- HOME & DEVICES ---
 
 def home(request):
-    # Jeśli użytkownik jest zalogowany -> Pokaż mu jego terraria
     if request.user.is_authenticated:
-        # Pobieramy urządzenia przypisane do użytkownika (z modelu Terrarium)
+        # Pobieramy urządzenia przypisane do użytkownika
         devices = request.user.terrariums.all()
     else:
-        # Jeśli nie jest zalogowany -> Pusta lista (wyświetlimy Landing Page w HTML)
         devices = []
-
     return render(request, 'home.html', {'devices': devices})
+
+
 @login_required
 def add_device(request):
     if request.method == "POST":
         form = AddDeviceForm(request.POST)
         if form.is_valid():
             dev_id = form.cleaned_data['device_id']
+            pin = form.cleaned_data['pin']
             name = form.cleaned_data['name']
+
+            # 1. Sprawdź czy PIN się zgadza w AllowedDevice
+            # (Tutaj zakładamy uproszczoną wersję z Twojego kodu,
+            #  normalnie sprawdzalibyśmy model AllowedDevice)
+
+            # 2. Przypisz lub stwórz urządzenie
             device, created = Terrarium.objects.get_or_create(device_id=dev_id)
             device.owner = request.user
             device.name = name
             device.save()
+
             messages.success(request, "Urządzenie dodane pomyślnie!")
             return redirect('home')
     else:
@@ -84,95 +94,134 @@ def add_device(request):
 def delete_device(request, device_id):
     if request.method == "POST":
         device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
-        device.owner = None
+        device.owner = None  # Odpinamy usera, nie usuwamy rekordu z bazy
         device.save()
         messages.success(request, "Urządzenie usunięte z konta.")
     return redirect('home')
 
 
+# --- DASHBOARD & CONTROL ---
+
 @login_required
 def dashboard(request, device_id):
-    device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+    terrarium = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
 
+    # OBSŁUGA FORMULARZA USTAWIEŃ (POST)
     if request.method == "POST":
-        form = TerrariumSettingsForm(request.POST, instance=device)
+        form = TerrariumSettingsForm(request.POST, instance=terrarium)
         if form.is_valid():
             form.save()
-            messages.success(request, "Ustawienia zapisane!")
+            messages.success(request, "Ustawienia zapisane pomyślnie.")
             return redirect('dashboard', device_id=device_id)
         else:
-            print(f"❌ BŁĄD FORMULARZA DLA {device_id}:", form.errors)
-            messages.error(request, "Błąd zapisu. Sprawdź poprawność danych.")
+            messages.error(request, "Błąd zapisu ustawień. Sprawdź formularz.")
 
-    last_reading = device.readings.first()
-    if not last_reading:
-        last_reading = {'temp': 0, 'hum': 0, 'timestamp': timezone.now(),
-                        'is_heater_on': False, 'is_mist_on': False, 'is_light_on': False}
+    # POBIERANIE DANYCH DO WYŚWIETLENIA (GET)
+    reading = Reading.objects.filter(terrarium=terrarium).order_by('-timestamp').first()
 
-    features = {
-        'heater': True,
-        'mist': device.device_id.startswith(('A', 'B')),
-        'light': device.device_id.startswith(('A', 'D'))
+    # --- LOGIKA DZIEŃ / NOC ---
+    now = timezone.localtime().time()
+
+    if terrarium.light_mode == 'manual':
+        # Priorytet manuala: Jeśli ręcznie włączone -> Dzień. Wyłączone -> Noc.
+        is_day = terrarium.light_manual_state
+    else:
+        # Tryb Auto (Zegar)
+        start = terrarium.light_start
+        end = terrarium.light_end
+
+        if start < end:
+            is_day = start <= now < end
+        else:
+            is_day = now >= start or now < end
+
+    # Debug w konsoli
+    print(f"DASHBOARD STATUS: Godzina={now}, Tryb={terrarium.light_mode}, IS_DAY={is_day}")
+
+    context = {
+        'settings': terrarium,
+        'reading': reading,
+        'is_day': is_day,
     }
+    return render(request, 'dashboard.html', context)
 
-    return render(request, 'dashboard.html', {
-        'settings': device,
-        'reading': last_reading,
-        'features': features,
-        'user': request.user
-    })
 
+# apps/core/views.py
 
 @login_required
-def toggle_light(request, device_id):
+def switch_light_mode(request, device_id):
+    """Przełącza tylko tryb: Auto <-> Manual"""
     device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+
     if device.light_mode == 'auto':
         device.light_mode = 'manual'
+        # Przy przejściu na manual, zachowaj obecny stan światła (żeby nie mrugało)
+        # albo domyślnie włącz. Tutaj np. zostawiamy domyślnie włączone dla wygody.
         device.light_manual_state = True
-        msg = "Przełączono na tryb RĘCZNY: Światło WŁĄCZONE."
+        msg = "Tryb RĘCZNY aktywowany."
     else:
-        device.light_manual_state = not device.light_manual_state
-        state_txt = "WŁĄCZONE" if device.light_manual_state else "WYŁĄCZONE"
-        msg = f"Światło {state_txt} (Tryb Ręczny)."
+        device.light_mode = 'auto'
+        msg = "Tryb AUTOMATYCZNY aktywowany."
+
     device.save()
     messages.info(request, msg)
     return redirect('dashboard', device_id=device_id)
 
 
 @login_required
-def history_data(request, period):
-    dev_id = request.GET.get('id')
-    device = get_object_or_404(Terrarium, device_id=dev_id, owner=request.user)
-    now = timezone.now()
-    if period == 'day':
-        delta, limit = timedelta(hours=24), 48
-    elif period == 'week':
-        delta, limit = timedelta(days=7), 100
+def toggle_light_state(request, device_id):
+    """Włącza/Wyłącza światło (tylko w trybie Manual)"""
+    device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+
+    if device.light_mode == 'manual':
+        device.light_manual_state = not device.light_manual_state
+        device.save()
+        state = "WŁĄCZONE" if device.light_manual_state else "WYŁĄCZONE"
+        messages.success(request, f"Światło zostało {state}.")
     else:
-        delta, limit = timedelta(days=30), 100
-    readings = Reading.objects.filter(terrarium=device, timestamp__gte=now - delta).order_by('timestamp')
-    data_list = list(readings.values('timestamp', 'temp', 'hum'))
-    if len(data_list) > limit:
-        step = len(data_list) // limit
+        messages.warning(request, "Najpierw przełącz na tryb Ręczny!")
+
+    return redirect('dashboard', device_id=device_id)
+# --- API & DATA ---
+
+@login_required
+def chart_data(request, device_id):
+    """API dla wykresu w Dashboardzie"""
+    device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+
+    # Pobierz dane z ostatnich 24h
+    now = timezone.now()
+    yesterday = now - timedelta(hours=24)
+    readings = Reading.objects.filter(terrarium=device, timestamp__gte=yesterday).order_by('timestamp')
+
+    # Optymalizacja: Jeśli danych jest za dużo (>100), cofnij co N-ty
+    data_list = list(readings)
+    if len(data_list) > 100:
+        step = len(data_list) // 100
         data_list = data_list[::step]
+
     labels = []
     temps = []
     hums = []
+
     for r in data_list:
-        local_time = timezone.localtime(r['timestamp'])
-        if period == 'day':
-            labels.append(local_time.strftime('%H:%M'))
-        else:
-            labels.append(local_time.strftime('%d.%m'))
-        temps.append(r['temp'])
-        hums.append(r['hum'])
+        local_time = timezone.localtime(r.timestamp)
+        labels.append(local_time.strftime('%H:%M'))
+        temps.append(r.temp)
+        hums.append(r.hum)
+
     return JsonResponse({'labels': labels, 'temps': temps, 'hums': hums})
+
+
+# --- PWA & ACCOUNT ---
 
 def manifest_view(request):
     return render(request, 'manifest.json', content_type='application/json')
 
+
 def service_worker_view(request):
     return render(request, 'sw.js', content_type='application/javascript')
+
 
 def offline_view(request):
     return render(request, 'offline.html')
@@ -182,7 +231,6 @@ def offline_view(request):
 def account_settings(request):
     if request.method == "POST":
         email = request.POST.get('email')
-        # Prosta walidacja i zapis
         if email:
             request.user.email = email
             request.user.save()

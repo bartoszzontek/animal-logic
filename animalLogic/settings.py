@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import sys
 
+TIME_ZONE = 'Europe/Warsaw'
 # Budowanie ścieżek wewnątrz projektu
 BASE_DIR = Path(__file__).resolve().parent.parent
 

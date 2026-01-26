@@ -5,7 +5,7 @@
     
     <header class="device-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 15px;">
-            <div style="width: 15px; height: 15px; border-radius: 50%; background-color: {% if reading.is_online %}var(--success){% else %}var(--danger){% endif %}; box-shadow: 0 0 10px {% if reading.is_online %}var(--success){% else %}var(--danger){% endif %};"></div>
+            <div style="width: 15px; height: 15px; border-radius: 50%; background-color: {% if settings.is_online %}var(--success){% else %}var(--danger){% endif %}; box-shadow: 0 0 10px {% if settings.is_online %}var(--success){% else %}var(--danger){% endif %};"></div>
             
             <div>
                 <h1 style="margin: 0; font-size: 1.8rem;">{{ settings.name }}</h1>
@@ -33,39 +33,80 @@
     </div>
 
     <h2 class="section-title" style="margin: 30px 0 15px 0; border-left: 4px solid var(--primary); padding-left: 10px;">Sterowanie</h2>
+    <h2 class="section-title" style="margin: 30px 0 15px 0; border-left: 4px solid var(--primary); padding-left: 10px;">Sterowanie</h2>
     <div class="controls-grid">
         
         <div class="card control-card {% if reading.is_light_on %}active{% endif %}">
             <div class="card-header">
-                <span>Światło ({{ settings.get_light_mode_display }})</span>
+                <span>Światło</span>
                 <div class="status-dot"></div>
             </div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0;">
-                {{ settings.light_start|date:"H:i" }} - {{ settings.light_end|date:"H:i" }}
+            
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 5px 0;">
+                Tryb: <strong>{{ settings.get_light_mode_display }}</strong>
             </p>
-            <a href="{% url 'toggle_light' settings.device_id %}" class="btn-toggle">
-                {% if settings.light_mode == 'auto' %}Przejdź na Ręczny{% else %}Przełącz{% endif %}
+
+            <a href="{% url 'switch_light_mode' settings.device_id %}" class="btn-toggle" style="margin-top: 10px; background: rgba(255,255,255,0.1);">
+                {% if settings.light_mode == 'auto' %}
+                    Przełącz na RĘCZNY
+                {% else %}
+                    Wróć do AUTOMATU
+                {% endif %}
             </a>
+
+            {% if settings.light_mode == 'manual' %}
+                <a href="{% url 'toggle_light_state' settings.device_id %}" class="btn-toggle" 
+                   style="margin-top: 10px; background: {% if settings.light_manual_state %}var(--warning){% else %}#333{% endif %}; color: {% if settings.light_manual_state %}black{% else %}white{% endif %}; border: 1px solid #444;">
+                    {% if settings.light_manual_state %}ZGAS SWIATŁO{% else %}ZAPAL ŚWIATŁO{% endif %}
+                </a>
+            {% endif %}
+
+            {% if settings.light_mode == 'auto' %}
+                <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">
+                    Godziny: {{ settings.light_start|date:"H:i" }} - {{ settings.light_end|date:"H:i" }}
+                </p>
+            {% endif %}
         </div>
 
-        <div class="card control-card {% if reading.is_heater_on %}active-warm{% endif %}">
+        <div class="card control-card {% if reading.heater %}active-warm{% endif %}">
             <div class="card-header">
                 <span>Grzałka</span>
                 <div class="status-dot"></div>
             </div>
             <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0;">Tryb: Automatyczny</p>
-            <div class="badge" style="display: inline-block; padding: 5px 10px; border-radius: 5px; background: rgba(255,255,255,0.1); font-size: 0.8rem;">
-                {% if reading.is_heater_on %}GRZEJE{% else %}CZUWA{% endif %}
+            
+            <div class="badge" style="
+                display: inline-block; 
+                padding: 5px 10px; 
+                border-radius: 5px; 
+                font-size: 0.8rem; 
+                font-weight: bold;
+                background: {% if reading.heater %}var(--danger){% else %}rgba(255,255,255,0.1){% endif %};
+                color: white;
+                transition: 0.3s;
+            ">
+                {% if reading.heater %}🔥 GRZEJE{% else %}💤 CZUWA{% endif %}
             </div>
         </div>
 
-        <div class="card control-card {% if reading.is_mist_on %}active-blue{% endif %}">
+        <div class="card control-card {% if reading.mist %}active-blue{% endif %}">
             <div class="card-header">
                 <span>Zraszacz</span>
                 <div class="status-dot"></div>
             </div>
             <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0;">Tryb: {{ settings.get_mist_mode_display }}</p>
-            <button class="btn-action" disabled style="opacity: 0.5; cursor: not-allowed;">Zroś teraz (Wkrótce)</button>
+            
+             <div class="badge" style="
+                display: inline-block; 
+                padding: 5px 10px; 
+                border-radius: 5px; 
+                font-size: 0.8rem; 
+                font-weight: bold;
+                background: {% if reading.mist %}#457b9d{% else %}rgba(255,255,255,0.1){% endif %};
+                color: white;
+            ">
+                {% if reading.mist %}💦 ZRASZA{% else %}🌵 SUCHO{% endif %}
+            </div>
         </div>
     </div>
 
@@ -135,7 +176,7 @@
                 <legend>💧 System Zraszania</legend>
                 
                 <div class="checkbox-row">
-                    <input type="checkbox" id="mist_enabled" name="alerts_enabled" {% if settings.mist_enabled %}checked{% endif %}>
+                    <input type="checkbox" id="mist_enabled" name="mist_enabled" {% if settings.mist_enabled %}checked{% endif %}>
                     <label for="mist_enabled">System Aktywny</label>
                 </div>
 
@@ -195,62 +236,12 @@
 </dialog>
 
 <style>
-    /* Style formularza w modalu */
-    .settings-group {
-        border: 1px solid #333;
-        border-radius: 10px;
-        padding: 15px;
-        margin: 0;
-    }
-    
-    legend {
-        padding: 0 10px;
-        font-weight: 600;
-        color: var(--primary);
-    }
-
-    .dark-input {
-        width: 100%;
-        padding: 10px;
-        background: #111;
-        border: 1px solid #333;
-        color: white;
-        border-radius: 6px;
-        margin-top: 5px;
-        font-family: inherit;
-    }
-    
-    .dark-input:focus {
-        border-color: var(--primary);
-        outline: none;
-    }
-
-    .grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-    }
-
-    .checkbox-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: rgba(255,255,255,0.05);
-        padding: 10px;
-        border-radius: 6px;
-    }
-    
-    label {
-        font-size: 0.9rem;
-        color: #ccc;
-    }
-</style>
-<style>
+    /* Grid Główny */
     .dashboard-container { max-width: 900px; margin: 0 auto; }
-    
     .readings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
     
+    /* Karty */
     .card {
         background: var(--bg-card);
         border-radius: 16px;
@@ -265,6 +256,7 @@
     .reading-card .label { text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; color: var(--text-muted); }
     .reading-card .target { margin-top: 10px; font-size: 0.85rem; background: rgba(255,255,255,0.05); display: inline-block; padding: 4px 12px; border-radius: 20px; }
 
+    /* Karty Sterowania */
     .control-card { display: flex; flex-direction: column; justify-content: space-between; transition: 0.3s; }
     .control-card.active { border-bottom: 3px solid var(--warning); }
     .control-card.active-warm { border-bottom: 3px solid var(--danger); }
@@ -276,21 +268,47 @@
     .active-warm .status-dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
     .active-blue .status-dot { background: #457b9d; box-shadow: 0 0 8px #457b9d; }
 
+    /* Przyciski */
     .btn-toggle, .btn-action {
         background: rgba(255,255,255,0.05); color: white; text-decoration: none;
         padding: 12px; text-align: center; border-radius: 8px; margin-top: 15px;
         border: none; width: 100%; display: block; font-weight: 600; font-size: 0.9rem; transition: 0.2s;
     }
     .btn-toggle:hover { background: rgba(255,255,255,0.1); }
-
+    
     .btn-secondary {
         background: #111; border: 1px solid #333; color: #ccc;
         padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;
     }
+
+    /* Style formularza w modalu */
+    .settings-group {
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 0;
+    }
+    
+    legend { padding: 0 10px; font-weight: 600; color: var(--primary); }
+
+    .dark-input {
+        width: 100%; padding: 10px; background: #111;
+        border: 1px solid #333; color: white; border-radius: 6px;
+        margin-top: 5px; font-family: inherit;
+    }
+    .dark-input:focus { border-color: var(--primary); outline: none; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+    .checkbox-row {
+        display: flex; align-items: center; gap: 10px;
+        background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px;
+    }
+    label { font-size: 0.9rem; color: #ccc; }
     
     /* Responsywność */
     @media (max-width: 600px) {
-        .readings-grid { grid-template-columns: 1fr 1fr; } /* Na mobile 2 kolumny obok siebie dla temp/hum */
+        .readings-grid { grid-template-columns: 1fr 1fr; } 
     }
 </style>
 
