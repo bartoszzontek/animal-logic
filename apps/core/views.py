@@ -7,7 +7,6 @@ from django.http import JsonResponse, HttpResponse  # <--- WAŻNE: Dodano HttpRe
 from django.utils import timezone
 from datetime import timedelta
 import datetime
-
 from .models import Terrarium, Reading, AllowedDevice
 from .forms import RegisterForm, AddDeviceForm, TerrariumSettingsForm
 
@@ -172,64 +171,13 @@ def history_data(request, period):
 
 # --- PWA (TEGO BRAKOWAŁO LUB BYŁO NIEPODPIĘTE) ---
 
-def manifest_view(request):
-    manifest = {
-        "name": "AnimalLogic",
-        "short_name": "AnimalLogic",
-        "description": "Smart Terrarium Controller",
-        "start_url": "/",
-        "display": "standalone",
-        "background_color": "#101412",
-        "theme_color": "#2d6a4f",
-        "orientation": "portrait",
-        "icons": [
-            {
-                "src": "https://cdn-icons-png.flaticon.com/512/2395/2395798.png",
-                "type": "image/png",
-                "sizes": "512x512"
-            }
-        ]
-    }
-    return JsonResponse(manifest)
+# apps/core/views.py
 
+def manifest_view(request):
+    return render(request, 'manifest.json', content_type='application/json')
 
 def service_worker_view(request):
-    js = """
-    const CACHE_NAME = 'animallogic-v1';
-    const OFFLINE_URL = '/offline/';
-
-    self.addEventListener('install', (event) => {
-        event.waitUntil(
-            caches.open(CACHE_NAME).then((cache) => {
-                return cache.addAll([OFFLINE_URL]);
-            })
-        );
-    });
-
-    self.addEventListener('fetch', (event) => {
-        if (event.request.mode === 'navigate') {
-            event.respondWith(
-                fetch(event.request).catch(() => {
-                    return caches.match(OFFLINE_URL);
-                })
-            );
-        }
-    });
-    """
-    return HttpResponse(js, content_type='application/javascript')
-
+    return render(request, 'sw.js', content_type='application/javascript')
 
 def offline_view(request):
-    html = """
-    <!DOCTYPE html>
-    <html style="background:#101412; color:white; font-family:sans-serif; text-align:center; padding-top:50px;">
-    <head><title>Offline</title><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-    <body>
-        <h1 style="color:#e63946; font-size:3rem;">OFFLINE</h1>
-        <p>Brak połączenia z internetem.</p>
-        <p>Sprawdź WiFi i odśwież stronę.</p>
-        <button onclick="window.location.reload()" style="padding:15px 30px; font-weight:bold; background:#2d6a4f; color:white; border:none; border-radius:10px; margin-top:20px;">ODŚWIEŻ</button>
-    </body>
-    </html>
-    """
-    return HttpResponse(html)
+    return render(request, 'offline.html')

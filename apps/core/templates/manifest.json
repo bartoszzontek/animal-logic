@@ -1,0 +1,13 @@
+{
+  "name": "AnimalLogic",
+  "short_name": "AnimalLogic",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101412",
+  "theme_color": "#2d6a4f",
+  "icons": [{
+    "src": "https://cdn-icons-png.flaticon.com/512/2395/2395798.png",
+    "type": "image/png",
+    "sizes": "512x512"
+  }]
+}
