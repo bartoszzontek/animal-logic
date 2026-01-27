@@ -1,4 +1,4 @@
-const CACHE_NAME = 'animallogic-v1';
+const CACHE_NAME = 'animallogic-v2';
 const OFFLINE_URL = '/offline/';
 
 self.addEventListener('install', (event) => {
