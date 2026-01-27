@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/sensor/update', views.api_sensor_update, name='sensor_update'),
     path('api/auth/device', views.api_device_auth, name='device_auth'),
     path('api/firmware/<str:filename>', views.download_firmware, name='firmware_download'),
+    path('api/status/<str:device_id>/', views.api_get_latest_data, name='api_get_latest_data'),
 
     # PWA
     path('manifest.json', views.manifest_view, name='manifest'),

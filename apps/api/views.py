@@ -19,8 +19,6 @@ from django.db.models import Avg
 from apps.core.models import Terrarium, Reading, AllowedDevice
 
 
-
-
 def chart_data_view(request, device_id):
     """
     Zwraca dane pomiarowe z ostatnich 24h w formacie JSON dla wykresu Chart.js.
@@ -42,6 +40,7 @@ def chart_data_view(request, device_id):
         'hums': [float(r.hum) for r in readings]
     }
     return JsonResponse(data)
+
 
 def download_firmware(request, filename):
     """
@@ -65,7 +64,6 @@ def download_firmware(request, filename):
         return response
     else:
         raise Http404("Firmware not found")
-
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -103,12 +101,22 @@ class IoTUpdateView(View):
 
     def post(self, request):
         # 1. AUTORYZACJA (TOKEN)
+        # Sprawdzamy nagłówek ALBO body (dla symulatora)
         auth_header = request.headers.get('Authorization')
+        token = None
 
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return JsonResponse({'error': 'Missing or Invalid Token Header'}, status=401)
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+        else:
+            # Fallback: sprawdź body (dla symulatora, który wysyła token w JSON)
+            try:
+                body_data = json.loads(request.body)
+                token = body_data.get('token')
+            except:
+                pass
 
-        token = auth_header.split(" ")[1]
+        if not token:
+            return JsonResponse({'error': 'Missing or Invalid Token'}, status=401)
 
         try:
             allowed = AllowedDevice.objects.get(api_token=token)
@@ -118,13 +126,11 @@ class IoTUpdateView(View):
 
         try:
             # 2. DANE Z ESP
-
             try:
                 data = json.loads(request.body)
             except JSONDecodeError:
                 return JsonResponse({'error': 'Invalid JSON format'}, status=400)
 
-            # Walidacja danych wejściowych
             raw_temp = data.get('temp')
             raw_hum = data.get('hum')
 
@@ -149,16 +155,13 @@ class IoTUpdateView(View):
 
             # A. ALERTY EMAIL
             if device.alerts_enabled and device.alert_email:
-                should_send = False
-                subject = ""
-
-                # Sprawdzamy czy minął czas karencji (np. 15 minut)
                 cooldown = True
-                if device.last_alert_sent:
-                    if timezone.now() - device.last_alert_sent < timedelta(minutes=15):
-                        cooldown = False
+                if device.last_alert_sent and (timezone.now() - device.last_alert_sent < timedelta(minutes=15)):
+                    cooldown = False
 
                 if cooldown:
+                    subject = ""
+                    should_send = False
                     if temp > device.alert_max_temp:
                         should_send = True
                         subject = f"ALARM: {device.name} - Wysoka Temperatura!"
@@ -170,20 +173,13 @@ class IoTUpdateView(View):
 
                     if should_send:
                         try:
-                            send_mail(
-                                subject,
-                                msg,
-                                'system@animal.zipit.pl',  # Nadawca (musi być w settings.py lub taki)
-                                [device.alert_email],
-                                fail_silently=True
-                            )
+                            send_mail(subject, msg, 'system@animal.zipit.pl', [device.alert_email], fail_silently=True)
                             device.last_alert_sent = timezone.now()
                             device.save()
-                        except Exception as e:
-                            print(f"Błąd wysyłania maila: {e}")
+                        except:
+                            pass
 
-            # B. STEROWANIE (LOGIKA)
-
+            # B. STEROWANIE
             # Światło
             if device.light_mode == 'manual':
                 light_on = device.light_manual_state
@@ -205,24 +201,27 @@ class IoTUpdateView(View):
                 if device.mist_mode == 'auto':
                     mist_on = hum < device.mist_min_humidity
                 else:
-                    # Prosty harmonogram (sprawdzenie minuty)
                     current_hm = now_time.strftime("%H:%M")
                     timers = [device.mist_h1, device.mist_h2, device.mist_h3, device.mist_h4]
                     for t in timers:
                         if t and t.strftime("%H:%M") == current_hm:
                             mist_on = True
 
-            # C. ZAPIS DO BAZY
+            # C. ZAPIS DO BAZY (NAPRAWIONE NAZWY PÓL)
             Reading.objects.create(
-                terrarium=device, temp=temp, hum=hum,
-                is_heater_on=heater_on, is_mist_on=mist_on, is_light_on=light_on
+                terrarium=device,
+                temp=temp,
+                hum=hum,
+                heater=heater_on,  # POPRAWNE: heater (zamiast is_heater_on)
+                mist=mist_on,      # POPRAWNE: mist (zamiast is_mist_on)
+                light=light_on     # POPRAWNE: light (zamiast is_light_on)
             )
 
             device.last_seen = now
             device.is_online = True
             device.save()
 
-            # D. ODPOWIEDŹ DLA ESP (ROZKAZY)
+            # D. ODPOWIEDŹ
             return JsonResponse({
                 'status': 'ok',
                 'heater': heater_on,

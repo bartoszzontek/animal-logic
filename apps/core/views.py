@@ -211,33 +211,27 @@ def api_sensor_update(request):
         dev_id = data.get('device_id')
         token = data.get('token')
 
-        # Debug: Pokaż co przyszło (pomocne przy debugowaniu)
-        # print(f"DEBUG VIEW: ID={dev_id}, Token={token}")
-
         try:
             allowed = AllowedDevice.objects.get(device_id=dev_id)
         except AllowedDevice.DoesNotExist:
             return JsonResponse({'error': f'Device {dev_id} not allowed'}, status=401)
 
-        # Sprawdzenie tokena (konwersja na string dla bezpieczeństwa)
         if str(allowed.api_token).strip() != str(token).strip():
             return JsonResponse({'error': 'Invalid Token'}, status=401)
 
-        # Logika zapisu...
         terrarium, _ = Terrarium.objects.get_or_create(device_id=dev_id)
 
+        # --- POPRAWIONY ZAPIS (Krótkie nazwy) ---
         Reading.objects.create(
             terrarium=terrarium,
             temp=data.get('temp', 0),
             hum=data.get('hum', 0),
-            # --- ODKOMENTOWANE I GOTOWE DO DZIAŁANIA ---
-            heater=data.get('heater', False),
-            light=data.get('light', False),
-            mist=data.get('mist', False)
-            # -------------------------------------------
+            heater=data.get('heater', False),  # BYŁO: is_heater_on -> JEST: heater
+            light=data.get('light', False),  # BYŁO: is_light_on -> JEST: light
+            mist=data.get('mist', False)  # BYŁO: is_mist_on -> JEST: mist
         )
+        # ----------------------------------------
 
-        # Aktualizacja 'ostatnio widziano'
         terrarium.last_seen = timezone.now()
         terrarium.is_online = True
         terrarium.save()
@@ -276,3 +270,22 @@ def download_firmware(request, filename):
         return FileResponse(open(path, 'rb'), content_type='application/octet-stream')
 
     raise Http404
+# apps/core/views.py
+
+@login_required
+def api_get_latest_data(request, device_id):
+    """Zwraca JSON z ostatnim stanem dla Dashboardu (AJAX)"""
+    terrarium = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+    reading = Reading.objects.filter(terrarium=terrarium).order_by('-timestamp').first()
+
+    if not reading:
+        return JsonResponse({'error': 'No data'}, status=404)
+
+    return JsonResponse({
+        'temp': reading.temp,
+        'hum': reading.hum,
+        'heater': reading.heater,
+        'mist': reading.mist,
+        'light': reading.light,
+        'last_seen': reading.timestamp.strftime('%H:%M:%S')
+    })

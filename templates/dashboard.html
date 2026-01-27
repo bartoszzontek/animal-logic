@@ -10,7 +10,7 @@
             <div>
                 <h1 style="margin: 0; font-size: 1.8rem;">{{ settings.name }}</h1>
                 <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
-                    ID: {{ settings.device_id }} • Ostatni odczyt: {{ reading.timestamp|date:"H:i" }}
+                    ID: {{ settings.device_id }} • Ostatni odczyt: <span id="last-seen">{{ reading.timestamp|date:"H:i:s" }}</span>
                 </p>
             </div>
         </div>
@@ -19,14 +19,14 @@
     <div class="readings-grid">
         <div class="card reading-card">
             <div class="icon" style="font-size: 2rem; margin-bottom: 10px;">🌡️</div>
-            <div class="value">{{ reading.temp }}<span class="unit">°C</span></div>
+            <div class="value"><span id="live-temp">{{ reading.temp }}</span><span class="unit">°C</span></div>
             <div class="label">Temperatura</div>
             <div class="target">Cel: {% if is_day %}{{ settings.temp_day }}{% else %}{{ settings.temp_night }}{% endif %}°C</div>
         </div>
 
         <div class="card reading-card">
             <div class="icon" style="font-size: 2rem; margin-bottom: 10px;">💧</div>
-            <div class="value">{{ reading.hum }}<span class="unit">%</span></div>
+            <div class="value"><span id="live-hum">{{ reading.hum }}</span><span class="unit">%</span></div>
             <div class="label">Wilgotność</div>
             <div class="target">Min: {{ settings.mist_min_humidity }}%</div>
         </div>
@@ -35,10 +35,10 @@
     <h2 class="section-title" style="margin: 30px 0 15px 0; border-left: 4px solid var(--primary); padding-left: 10px;">Sterowanie</h2>
     <div class="controls-grid">
         
-        <div class="card control-card {% if reading.is_light_on %}active{% endif %}">
+        <div class="card control-card" id="card-light">
             <div class="card-header">
                 <span>Światło</span>
-                <div class="status-dot {% if reading.is_light_on %}active-yellow{% endif %}"></div>
+                <div id="dot-light" class="status-dot {% if reading.light %}active-yellow{% endif %}"></div>
             </div>
             
             <p style="color: var(--text-muted); font-size: 0.9rem; margin: 5px 0;">
@@ -56,7 +56,7 @@
             {% if settings.light_mode == 'manual' %}
                 <a href="{% url 'toggle_light_state' settings.device_id %}" class="btn-toggle" 
                    style="margin-top: 10px; background: {% if settings.light_manual_state %}var(--warning){% else %}#333{% endif %}; color: {% if settings.light_manual_state %}black{% else %}white{% endif %}; border: 1px solid #444;">
-                    {% if settings.light_manual_state %}ZGAS ŚWIATŁO{% else %}ZAPAL ŚWIATŁO{% endif %}
+                    {% if settings.light_manual_state %}ZGAŚ ŚWIATŁO{% else %}ZAPAL ŚWIATŁO{% endif %}
                 </a>
             {% endif %}
 
@@ -67,41 +67,37 @@
             {% endif %}
         </div>
 
-        <div class="card control-card {% if reading.heater %}border-red{% endif %}">
+        <div class="card control-card" id="card-heater">
             <div class="card-header">
                 <span>Grzałka</span>
-                <span class="status-dot {% if reading.heater %}active-red{% endif %}"></span>
+                <span id="dot-heater" class="status-dot {% if reading.heater %}active-red{% endif %}"></span>
             </div>
             
             <div class="card-body">
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0;">Tryb: Automatyczny</p>
             </div>
             
-            <div class="status-bar {% if reading.heater %}active-bg-red{% endif %}">
-                {% if reading.heater %}
-                    🔥 GRZEJE
-                {% else %}
-                    💤 CZUWA
-                {% endif %}
+            <div id="status-heater-bg" class="status-bar {% if reading.heater %}active-bg-red{% endif %}">
+                <span id="status-heater-text">
+                    {% if reading.heater %}🔥 GRZEJE{% else %}💤 CZUWA{% endif %}
+                </span>
             </div>
         </div>
 
-        <div class="card control-card {% if reading.mist %}border-blue{% endif %}">
+        <div class="card control-card" id="card-mist">
             <div class="card-header">
                 <span>Zraszacz</span>
-                <span class="status-dot {% if reading.mist %}active-blue{% endif %}"></span>
+                <span id="dot-mist" class="status-dot {% if reading.mist %}active-blue{% endif %}"></span>
             </div>
             
             <div class="card-body">
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0;">Tryb: {{ settings.get_mist_mode_display }}</p>
             </div>
             
-            <div class="status-bar {% if reading.mist %}active-bg-blue{% endif %}">
-                {% if reading.mist %}
-                    💦 ZRASZA
-                {% else %}
-                    🌵 SUCHO
-                {% endif %}
+            <div id="status-mist-bg" class="status-bar {% if reading.mist %}active-bg-blue{% endif %}">
+                <span id="status-mist-text">
+                    {% if reading.mist %}💦 ZRASZA{% else %}🌵 SUCHO{% endif %}
+                </span>
             </div>
         </div>
 
@@ -249,16 +245,9 @@
     }
 
     /* --- STANY AKTYWNE KARTY (GLOW) --- */
-    .card.active { border-bottom: 3px solid var(--warning); }
-    
-    .card.border-red {
-        border: 1px solid rgba(255, 68, 68, 0.3);
-        box-shadow: 0 0 15px rgba(255, 68, 68, 0.15);
-    }
-    .card.border-blue {
-        border: 1px solid rgba(0, 204, 255, 0.3);
-        box-shadow: 0 0 15px rgba(0, 204, 255, 0.15);
-    }
+    /* Ramka dla grzałki/zraszacza aktywnego */
+    .card.border-red { border: 1px solid rgba(255, 68, 68, 0.3); box-shadow: 0 0 15px rgba(255, 68, 68, 0.15); }
+    .card.border-blue { border: 1px solid rgba(0, 204, 255, 0.3); box-shadow: 0 0 15px rgba(0, 204, 255, 0.15); }
 
     /* Odczyty */
     .reading-card { text-align: center; padding: 30px 20px; }
@@ -322,6 +311,7 @@
 </style>
 
 <script>
+    // 1. WYKRES (Chart.js)
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('tempChart').getContext('2d');
         
@@ -368,5 +358,70 @@
             })
             .catch(err => console.error("Błąd ładowania wykresu:", err));
     });
+
+    // 2. LIVE UPDATE (AJAX) - Odświeżanie bez przeładowania
+    function refreshDashboard() {
+        const deviceId = "{{ settings.device_id }}";
+        
+        fetch(`/api/status/${deviceId}/`)
+            .then(response => response.json())
+            .then(data => {
+                // 1. Aktualizuj Liczby
+                document.getElementById('live-temp').innerText = data.temp;
+                document.getElementById('live-hum').innerText = data.hum;
+                
+                if (data.last_seen) {
+                    document.getElementById('last-seen').innerText = data.last_seen;
+                }
+
+                // 2. Aktualizuj Grzałkę
+                const cardHeater = document.getElementById('card-heater');
+                const dotHeater = document.getElementById('dot-heater');
+                const barHeater = document.getElementById('status-heater-bg');
+                const textHeater = document.getElementById('status-heater-text');
+
+                if (data.heater) {
+                    dotHeater.classList.add('active-red');
+                    barHeater.classList.add('active-bg-red');
+                    cardHeater.classList.add('border-red'); // Dodatkowa ramka
+                    textHeater.innerHTML = '🔥 GRZEJE';
+                } else {
+                    dotHeater.classList.remove('active-red');
+                    barHeater.classList.remove('active-bg-red');
+                    cardHeater.classList.remove('border-red');
+                    textHeater.innerHTML = '💤 CZUWA';
+                }
+
+                // 3. Aktualizuj Zraszacz
+                const cardMist = document.getElementById('card-mist');
+                const dotMist = document.getElementById('dot-mist');
+                const barMist = document.getElementById('status-mist-bg');
+                const textMist = document.getElementById('status-mist-text');
+
+                if (data.mist) {
+                    dotMist.classList.add('active-blue');
+                    barMist.classList.add('active-bg-blue');
+                    cardMist.classList.add('border-blue');
+                    textMist.innerHTML = '💦 ZRASZA';
+                } else {
+                    dotMist.classList.remove('active-blue');
+                    barMist.classList.remove('active-bg-blue');
+                    cardMist.classList.remove('border-blue');
+                    textMist.innerHTML = '🌵 SUCHO';
+                }
+
+                // 4. Aktualizuj Światło
+                const dotLight = document.getElementById('dot-light');
+                if (data.light) {
+                    dotLight.classList.add('active-yellow');
+                } else {
+                    dotLight.classList.remove('active-yellow');
+                }
+            })
+            .catch(err => console.error("Błąd odświeżania AJAX:", err));
+    }
+
+    // Uruchom odświeżanie co 3 sekundy
+    setInterval(refreshDashboard, 3000);
 </script>
 {% endblock %}
