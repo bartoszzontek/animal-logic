@@ -100,3 +100,16 @@ class Reading(models.Model):
 
     def __str__(self):
         return f"{self.terrarium.name} - {self.timestamp.strftime('%H:%M:%S')}"
+# apps/core/models.py
+
+class HourlyReading(models.Model):
+    terrarium = models.ForeignKey(Terrarium, on_delete=models.CASCADE)
+    timestamp = models.DateTimeField()  # Np. 2023-10-27 14:00:00
+    avg_temp = models.DecimalField(max_digits=5, decimal_places=2)
+    avg_hum = models.DecimalField(max_digits=5, decimal_places=2)
+
+    class Meta:
+        # Dzięki temu szybciej szuka się po dacie i terrarium
+        indexes = [
+            models.Index(fields=['terrarium', 'timestamp']),
+        ]
