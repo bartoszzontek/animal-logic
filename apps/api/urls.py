@@ -1,3 +1,4 @@
+# apps/api/urls.py
 from django.urls import path
 from .views import (
     IoTUpdateView,
@@ -7,15 +8,16 @@ from .views import (
 )
 
 urlpatterns = [
-    # Główny endpoint dla ESP (wysyłanie pomiarów)1
-    path('sensor/update', IoTUpdateView.as_view(), name='sensor_update'),
+    # Główny endpoint dla ESP (wysyłanie pomiarów)
+    # ZMIANA: name='sensor_update' -> name='api_sensor_update' (żeby testy przeszły)
+    path('sensor/update', IoTUpdateView.as_view(), name='api_sensor_update'),
 
-    # Endpoint do pobierania danych na wykres (Frontend)
+    # Endpoint do pobierania danych na wykres
     path('chart/<str:device_id>/', chart_data_view, name='chart_data'),
 
-    # Endpoint do aktualizacji OTA (pobieranie pliku .bin)
-    path('firmware/<str:filename>', download_firmware, name='firmware_download'),
+    # Endpoint do aktualizacji OTA
+    path('firmware/<str:filename>', download_firmware, name='download_firmware'),
 
-    # Opcjonalne: autoryzacja PINem (jeśli będziesz tego używać)
-    path('auth/device', DeviceAuthView.as_view(), name='device_auth'),
+    # Autoryzacja PINem
+    path('auth/device', DeviceAuthView.as_view(), name='api_device_auth'),
 ]
