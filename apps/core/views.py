@@ -12,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from datetime import timedelta
 
+# Importuj modele z pliku models.py (nie definiuj ich tutaj!)
 from .models import Terrarium, Reading, AllowedDevice
 from .forms import RegisterForm, AddDeviceForm, TerrariumSettingsForm
 
@@ -195,10 +196,6 @@ def offline_view(request):
     return render(request, 'offline.html')
 
 
-# apps/core/views.py (DOLNA CZĘŚĆ)
-
-# ... (wyżej importy i dashboard) ...
-
 # ==========================================
 # 4. API DLA ESP32 (BEZPIECZNIKI WYŁĄCZONE)
 # ==========================================
@@ -214,27 +211,35 @@ def api_sensor_update(request):
         dev_id = data.get('device_id')
         token = data.get('token')
 
-        # Debug: Pokaż co przyszło, jeśli test failuje
-        print(f"DEBUG VIEW: ID={dev_id}, Token={token}")
+        # Debug: Pokaż co przyszło (pomocne przy debugowaniu)
+        # print(f"DEBUG VIEW: ID={dev_id}, Token={token}")
 
         try:
             allowed = AllowedDevice.objects.get(device_id=dev_id)
         except AllowedDevice.DoesNotExist:
             return JsonResponse({'error': f'Device {dev_id} not allowed'}, status=401)
 
+        # Sprawdzenie tokena (konwersja na string dla bezpieczeństwa)
         if str(allowed.api_token).strip() != str(token).strip():
             return JsonResponse({'error': 'Invalid Token'}, status=401)
 
         # Logika zapisu...
         terrarium, _ = Terrarium.objects.get_or_create(device_id=dev_id)
+
         Reading.objects.create(
             terrarium=terrarium,
             temp=data.get('temp', 0),
             hum=data.get('hum', 0),
-            # heater=data.get('heater', False),
-            # light=data.get('light', False),
-            # mist=data.get('mist', False)
+            # --- ODKOMENTOWANE I GOTOWE DO DZIAŁANIA ---
+            heater=data.get('heater', False),
+            light=data.get('light', False),
+            mist=data.get('mist', False)
+            # -------------------------------------------
         )
+
+        # Aktualizacja 'ostatnio widziano'
+        terrarium.last_seen = timezone.now()
+        terrarium.is_online = True
         terrarium.save()
 
         return JsonResponse({"status": "ok"})
@@ -262,11 +267,8 @@ def api_device_auth(request):
 @csrf_exempt
 def download_firmware(request, filename):
     """Pobieranie pliku (GET)."""
-    # Tu nie ma sprawdzania uprawnień, więc 403 jest niemożliwe z winy tego kodu
-    # Jeśli wystąpi 403, to wina middleware Django.
     if not filename.endswith('.bin'): raise Http404
 
-    # Używamy settings.FIRMWARE_ROOT lub domyślnego folderu
     fw_path = getattr(settings, 'FIRMWARE_ROOT', os.path.join(settings.BASE_DIR, 'firmware'))
     path = os.path.join(fw_path, filename)
 
