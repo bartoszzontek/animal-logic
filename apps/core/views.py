@@ -1,23 +1,20 @@
+# apps/core/views.py
 import json
-import os
+from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.contrib.auth.hashers import check_password
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse, Http404, FileResponse
+from django.http import JsonResponse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-from datetime import timedelta
-
-# Importuj modele z pliku models.py (nie definiuj ich tutaj!)
-from .models import Terrarium, Reading, AllowedDevice
+from .models import Terrarium, Reading
 from .forms import RegisterForm, AddDeviceForm, TerrariumSettingsForm
 
 
-# --- 1. AUTHENTICATION ---
+# ==========================================
+# 1. UWIERZYTELNIANIE (Auth)
+# ==========================================
 
 def register_view(request):
     if request.method == "POST":
@@ -57,13 +54,14 @@ def logout_view(request):
     return redirect('login')
 
 
-# --- 2. DASHBOARD & URZĄDZENIA ---
+# ==========================================
+# 2. DASHBOARD & ZARZĄDZANIE (HTML)
+# ==========================================
 
+@login_required
 def home(request):
-    if request.user.is_authenticated:
-        devices = request.user.terrariums.all()
-    else:
-        devices = []
+    """Lista kafelków z terrariami"""
+    devices = request.user.terrariums.all()
     return render(request, 'home.html', {'devices': devices})
 
 
@@ -74,6 +72,7 @@ def add_device(request):
         if form.is_valid():
             dev_id = form.cleaned_data['device_id']
             name = form.cleaned_data['name']
+            # Tworzymy lub pobieramy, żeby przypisać usera
             device, created = Terrarium.objects.get_or_create(device_id=dev_id)
             device.owner = request.user
             device.name = name
@@ -89,7 +88,7 @@ def add_device(request):
 def delete_device(request, device_id):
     if request.method == "POST":
         device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
-        device.owner = None
+        device.owner = None  # Odpinamy usera, ale nie kasujemy danych historycznych
         device.save()
         messages.success(request, "Urządzenie usunięte z konta.")
     return redirect('home')
@@ -97,6 +96,7 @@ def delete_device(request, device_id):
 
 @login_required
 def dashboard(request, device_id):
+    """Główny panel sterowania terrarium"""
     terrarium = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
 
     if request.method == "POST":
@@ -106,9 +106,12 @@ def dashboard(request, device_id):
             messages.success(request, "Ustawienia zapisane.")
             return redirect('dashboard', device_id=device_id)
 
+    # Pobieramy ostatni odczyt
     reading = Reading.objects.filter(terrarium=terrarium).order_by('-timestamp').first()
 
+    # Sprawdzamy czy jest "dzień" wg ustawień (do wyświetlania słoneczka/księżyca)
     now = timezone.localtime().time()
+    is_day = False
     if terrarium.light_mode == 'manual':
         is_day = terrarium.light_manual_state
     else:
@@ -120,8 +123,8 @@ def dashboard(request, device_id):
             is_day = now >= start or now < end
 
     return render(request, 'dashboard.html', {
-        'settings': terrarium,
-        'reading': reading,
+        'settings': terrarium,  # Tutaj są pola is_heating, is_online itd.
+        'reading': reading,  # Tutaj są ostatnie temperatury
         'is_day': is_day,
     })
 
@@ -131,7 +134,8 @@ def switch_light_mode(request, device_id):
     device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
     if device.light_mode == 'auto':
         device.light_mode = 'manual'
-        device.light_manual_state = True
+        # Przy przejściu na manual, przyjmij obecny stan
+        # (Można tu dodać logikę pobierania aktualnego stanu)
         msg = "Tryb RĘCZNY."
     else:
         device.light_mode = 'auto'
@@ -149,7 +153,7 @@ def toggle_light_state(request, device_id):
         device.save()
         messages.success(request, "Przełączono światło.")
     else:
-        messages.warning(request, "Włącz tryb ręczny!")
+        messages.warning(request, "Włącz najpierw tryb ręczny!")
     return redirect('dashboard', device_id=device_id)
 
 
@@ -165,24 +169,9 @@ def account_settings(request):
     return render(request, 'account_settings.html', {'user': request.user})
 
 
-# --- 3. API (WYKRESY & PWA) ---
-
-@login_required
-def chart_data(request, device_id):
-    device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
-    now = timezone.now()
-    readings = Reading.objects.filter(terrarium=device, timestamp__gte=now - timedelta(hours=24)).order_by('timestamp')
-
-    data_list = list(readings)
-    if len(data_list) > 100:
-        data_list = data_list[::len(data_list) // 100]
-
-    return JsonResponse({
-        'labels': [timezone.localtime(r.timestamp).strftime('%H:%M') for r in data_list],
-        'temps': [r.temp for r in data_list],
-        'hums': [r.hum for r in data_list]
-    })
-
+# ==========================================
+# 3. API FRONTENDOWE (AJAX / PWA)
+# ==========================================
 
 def manifest_view(request):
     return render(request, 'manifest.json', content_type='application/json')
@@ -196,96 +185,52 @@ def offline_view(request):
     return render(request, 'offline.html')
 
 
-# ==========================================
-# 4. API DLA ESP32 (BEZPIECZNIKI WYŁĄCZONE)
-# ==========================================
+@login_required
+def chart_data(request, device_id):
+    """Dane do wykresu Chart.js"""
+    device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+    now = timezone.now()
+    readings = Reading.objects.filter(terrarium=device, timestamp__gte=now - timedelta(hours=24)).order_by('timestamp')
 
-@csrf_exempt
-def api_sensor_update(request):
-    """Odbiera pomiary (POST)."""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST only'}, status=405)
+    # Optymalizacja: jeśli jest za dużo punktów, bierzemy co któryś (downsampling)
+    data_list = list(readings)
+    if len(data_list) > 200:
+        data_list = data_list[::len(data_list) // 200]
 
-    try:
-        data = json.loads(request.body)
-        dev_id = data.get('device_id')
-        token = data.get('token')
+    return JsonResponse({
+        'labels': [timezone.localtime(r.timestamp).strftime('%H:%M') for r in data_list],
+        'temps': [r.temp for r in data_list],
+        'hums': [r.hum for r in data_list],
+        # Opcjonalnie: stany grzania na wykresie
+        'heaters': [1 if r.heater else 0 for r in data_list]
+    })
 
-        try:
-            allowed = AllowedDevice.objects.get(device_id=dev_id)
-        except AllowedDevice.DoesNotExist:
-            return JsonResponse({'error': f'Device {dev_id} not allowed'}, status=401)
-
-        if str(allowed.api_token).strip() != str(token).strip():
-            return JsonResponse({'error': 'Invalid Token'}, status=401)
-
-        terrarium, _ = Terrarium.objects.get_or_create(device_id=dev_id)
-
-        # --- POPRAWIONY ZAPIS (Krótkie nazwy) ---
-        Reading.objects.create(
-            terrarium=terrarium,
-            temp=data.get('temp', 0),
-            hum=data.get('hum', 0),
-            heater=data.get('heater', False),  # BYŁO: is_heater_on -> JEST: heater
-            light=data.get('light', False),  # BYŁO: is_light_on -> JEST: light
-            mist=data.get('mist', False)  # BYŁO: is_mist_on -> JEST: mist
-        )
-        # ----------------------------------------
-
-        terrarium.last_seen = timezone.now()
-        terrarium.is_online = True
-        terrarium.save()
-
-        return JsonResponse({"status": "ok"})
-
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@csrf_exempt
-def api_device_auth(request):
-    """Logowanie PINem (POST)."""
-    if request.method != 'POST': return JsonResponse({'error': 'POST only'}, status=405)
-    try:
-        data = json.loads(request.body)
-        allowed = AllowedDevice.objects.get(device_id=data.get('device_id'))
-
-        if check_password(data.get('pin'), allowed.pin_hash):
-            return JsonResponse({'status': 'authorized', 'token': allowed.api_token})
-
-        return JsonResponse({'error': 'Wrong PIN'}, status=403)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=403)
-
-
-@csrf_exempt
-def download_firmware(request, filename):
-    """Pobieranie pliku (GET)."""
-    if not filename.endswith('.bin'): raise Http404
-
-    fw_path = getattr(settings, 'FIRMWARE_ROOT', os.path.join(settings.BASE_DIR, 'firmware'))
-    path = os.path.join(fw_path, filename)
-
-    if os.path.exists(path):
-        return FileResponse(open(path, 'rb'), content_type='application/octet-stream')
-
-    raise Http404
-# apps/core/views.py
 
 @login_required
 def api_get_latest_data(request, device_id):
-    """Zwraca JSON z ostatnim stanem dla Dashboardu (AJAX)"""
+    """
+    To odpytuje Dashboard co 5 sekund, żeby zaktualizować kropki statusu bez odświeżania strony.
+    Korzystamy z nowych pól 'LIVE' w modelu Terrarium.
+    """
     terrarium = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+
+    # Pobieramy też ostatni odczyt temperatury
     reading = Reading.objects.filter(terrarium=terrarium).order_by('-timestamp').first()
 
-    if not reading:
-        return JsonResponse({'error': 'No data'}, status=404)
+    response_data = {
+        'online': terrarium.is_active,  # Czy ESP nadało sygnał < 60s temu
+        'heater': terrarium.is_heating,
+        'mist': terrarium.is_misting,
+        'light': terrarium.is_lighting,
+    }
 
-    return JsonResponse({
-        'temp': reading.temp,
-        'hum': reading.hum,
-        'heater': reading.heater,
-        'mist': reading.mist,
-        'light': reading.light,
-        'last_seen': reading.timestamp.strftime('%H:%M:%S')
-    })
+    if reading:
+        response_data['temp'] = reading.temp
+        response_data['hum'] = reading.hum
+        response_data['last_seen'] = timezone.localtime(reading.timestamp).strftime('%H:%M:%S')
+    else:
+        response_data['temp'] = '--'
+        response_data['hum'] = '--'
+        response_data['last_seen'] = 'Brak danych'
+
+    return JsonResponse(response_data)

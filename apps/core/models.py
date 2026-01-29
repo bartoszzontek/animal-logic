@@ -1,3 +1,4 @@
+# apps/core/models.py
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -5,12 +6,8 @@ import datetime
 from datetime import timedelta
 import secrets
 
-
+# ... (AllowedDevice zostaje bez zmian) ...
 class AllowedDevice(models.Model):
-    """
-    Magazyn autoryzowanych urządzeń (bezpieczeństwo).
-    Tutaj trzymamy pary ID + PIN.
-    """
     device_id = models.CharField(max_length=50, unique=True)
     pin_hash = models.CharField(max_length=128)
     api_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
@@ -67,11 +64,16 @@ class Terrarium(models.Model):
     last_seen = models.DateTimeField(null=True, blank=True)
     is_online = models.BooleanField(default=False)
 
+    # --- NOWE POLA (Status LIVE z Tasmoty) ---
+    # To pokazuje nam na dashboardzie, czy urządzenia faktycznie działają
+    is_heating = models.BooleanField(default=False)
+    is_misting = models.BooleanField(default=False)
+    is_lighting = models.BooleanField(default=False)
+
     @property
     def is_active(self):
-        """Czy urządzenie nadało sygnał w ciągu ostatnich 30 sekund?"""
         if not self.last_seen: return False
-        return (timezone.now() - self.last_seen) < timedelta(seconds=30)
+        return (timezone.now() - self.last_seen) < timedelta(seconds=60) # Zwiększyłem do 60s
 
     def __str__(self):
         return f"{self.name} ({self.device_id})"
@@ -88,8 +90,8 @@ class Reading(models.Model):
     temp = models.FloatField()
     hum = models.FloatField()
 
-    # Stan urządzeń (Dla kropek na dashboardzie)
-    # Zmieniłem nazwy z is_heater_on na heater, żeby pasowały do views.py i jsona z ESP
+    # Stan urządzeń (Historia)
+    # Tu zapiszemy to, co przyszło w 'heater_state' z ESP
     heater = models.BooleanField(default=False)
     mist = models.BooleanField(default=False)
     light = models.BooleanField(default=False)
@@ -100,16 +102,13 @@ class Reading(models.Model):
 
     def __str__(self):
         return f"{self.terrarium.name} - {self.timestamp.strftime('%H:%M:%S')}"
-# apps/core/models.py
 
+# ... (HourlyReading zostaje bez zmian) ...
 class HourlyReading(models.Model):
     terrarium = models.ForeignKey(Terrarium, on_delete=models.CASCADE)
-    timestamp = models.DateTimeField()  # Np. 2023-10-27 14:00:00
+    timestamp = models.DateTimeField()
     avg_temp = models.DecimalField(max_digits=5, decimal_places=2)
     avg_hum = models.DecimalField(max_digits=5, decimal_places=2)
 
     class Meta:
-        # Dzięki temu szybciej szuka się po dacie i terrarium
-        indexes = [
-            models.Index(fields=['terrarium', 'timestamp']),
-        ]
+        indexes = [models.Index(fields=['terrarium', 'timestamp'])]
