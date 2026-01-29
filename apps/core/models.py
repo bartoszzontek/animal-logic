@@ -73,7 +73,7 @@ class Terrarium(models.Model):
     @property
     def is_active(self):
         if not self.last_seen: return False
-        return (timezone.now() - self.last_seen) < timedelta(seconds=60) # Zwiększyłem do 60s
+        return (timezone.now() - self.last_seen) < timedelta(seconds=30) # Zwiększyłem do 60s
 
     def __str__(self):
         return f"{self.name} ({self.device_id})"

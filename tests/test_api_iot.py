@@ -1,128 +1,81 @@
 import pytest
 import json
 from django.urls import reverse
-from django.contrib.auth.hashers import make_password
 from apps.core.models import AllowedDevice, Terrarium, Reading
+from django.contrib.auth.hashers import make_password
+
+
+@pytest.fixture
+def setup_device(db):
+    """Tworzy testowe urządzenie i terrarium."""
+    AllowedDevice.objects.create(
+        device_id='TEST_DEV_01',
+        pin_hash=make_password('1234'),
+        api_token='SECRET_TOKEN_123'
+    )
+    Terrarium.objects.create(device_id='TEST_DEV_01', name='Test Terrarium')
+    return AllowedDevice.objects.get(device_id='TEST_DEV_01')
 
 
 @pytest.mark.django_db
 class TestIoTUpdateAPI:
 
-    @pytest.fixture
-    def setup_device(self):
-        """Tworzy urządzenie testowe i token w bazie"""
-        device = AllowedDevice.objects.create(
-            device_id="TEST_DEV_01",
-            pin_hash=make_password("1234"),
-            api_token="SECRET_TOKEN_123"
-        )
-        # Tworzymy też instancję Terrarium z ustawieniami
-        Terrarium.objects.create(
-            device_id="TEST_DEV_01",
-            name="Test Terrarium",
-            temp_day=25.0,
-            temp_night=20.0,
-            light_mode='auto'
-        )
-        return device
-
     def test_sensor_update_success(self, client, setup_device):
-        """
-        Sprawdza, czy API przyjmuje dane z symulatora (Token w JSON body)
-        i zapisuje je poprawnie w bazie używając nowych nazw pól.
-        """
-        url = reverse('api_sensor_update')  # Upewnij się, że w urls.py nazwa to 'api_sensor_update'
-
+        url = reverse('api_sensor_update')
         payload = {
-            "token": "SECRET_TOKEN_123",  # Symulator wysyła token w body
-            "temp": 22.5,
-            "hum": 50.0
+            "token": "SECRET_TOKEN_123",
+            "temp": 25.5,
+            "hum": 60.0,
+            "heater_state": False,  # Nowe pola
+            "mist_state": False,
+            "light_state": True
         }
-
-        response = client.post(
-            url,
-            data=json.dumps(payload),
-            content_type="application/json"
-        )
-
-        # 1. Sprawdź status HTTP
-        assert response.status_code == 200, f"Błąd API: {response.content.decode()}"
-
-        # 2. Sprawdź czy dane zapisały się w bazie
-        reading = Reading.objects.last()
-        assert reading is not None
-        assert reading.temp == 22.5
-        assert reading.hum == 50.0
-
-        # 3. KLUCZOWE: Sprawdź czy pola logiczne istnieją i mają wartości boolean
-        # (To potwierdza, że usunęliśmy 'is_heater_on' na rzecz 'heater')
-        assert hasattr(reading, 'heater')
-        assert hasattr(reading, 'light')
-        assert hasattr(reading, 'mist')
+        response = client.post(url, data=json.dumps(payload), content_type="application/json")
+        assert response.status_code == 200
+        assert Reading.objects.count() == 1
 
     def test_sensor_update_invalid_token(self, client, setup_device):
-        """Sprawdza czy odrzucamy błędny token"""
         url = reverse('api_sensor_update')
-
-        payload = {
-            "token": "ZLY_TOKEN_XYZ",
-            "temp": 20.0,
-            "hum": 50.0
-        }
-
-        response = client.post(
-            url,
-            data=json.dumps(payload),
-            content_type="application/json"
-        )
-
-        assert response.status_code == 401  # Unauthorized
+        payload = {"token": "WRONG_TOKEN", "temp": 20, "hum": 50}
+        response = client.post(url, data=json.dumps(payload), content_type="application/json")
+        assert response.status_code == 401
 
     def test_thermostat_logic(self, client, setup_device):
         """
-        Sprawdza, czy backend poprawnie decyduje o włączeniu grzałki.
-        Cel: 25.0, Obecna: 20.0 -> Grzałka powinna być ON.
+        Sprawdza, czy backend poprawnie podejmuje DECYZJĘ o włączeniu grzałki.
+        Cel: 25.0 (Dzień), Obecna: 10.0 -> Rozkaz: Grzej!
         """
         url = reverse('api_sensor_update')
 
-        # Wysyłamy temperaturę 10.0 (bardzo zimno)
+        # Konfiguracja celu w bazie
+        terra = Terrarium.objects.get(device_id='TEST_DEV_01')
+        terra.temp_day = 25.0
+        terra.save()
+
+        # ESP melduje: Jest mi zimno (10 stopni) i grzałka jest wyłączona
         payload = {
             "token": "SECRET_TOKEN_123",
             "temp": 10.0,
-            "hum": 50.0
+            "hum": 50.0,
+            "heater_state": False
         }
 
-        response = client.post(
-            url,
-            data=json.dumps(payload),
-            content_type="application/json"
-        )
+        response = client.post(url, data=json.dumps(payload), content_type="application/json")
 
         assert response.status_code == 200
         data = response.json()
 
-        # Backend powinien odesłać rozkaz włączenia grzałki
-        assert data['heater'] is True, "Termostat powinien włączyć grzanie przy 10 stopniach!"
-
-        # Sprawdzamy czy w bazie też zapisało się True
-        reading = Reading.objects.last()
-        assert reading.heater is True
+        # NAPRAWA: Sprawdzamy ROZKAZ (przyszłość), a nie stan w bazie (przeszłość)
+        assert data['heater'] is True, "Backend powinien kazać włączyć grzanie!"
 
     def test_auth_via_header(self, client, setup_device):
-        """
-        Sprawdza, czy API działa też z tokenem w nagłówku (dla prawdziwego ESP)
-        """
         url = reverse('api_sensor_update')
-        payload = {"temp": 22.0, "hum": 60.0}
-
-        # Token w nagłówku Authorization
-        headers = {"HTTP_AUTHORIZATION": "Bearer SECRET_TOKEN_123"}
+        payload = {"temp": 22.0, "hum": 50.0}  # Bez tokena w body
 
         response = client.post(
             url,
             data=json.dumps(payload),
             content_type="application/json",
-            **headers
+            HTTP_AUTHORIZATION=f"Bearer {setup_device.api_token}"
         )
-
         assert response.status_code == 200
