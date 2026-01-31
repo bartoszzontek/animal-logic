@@ -12,7 +12,6 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Terrarium, Reading
 from .forms import RegisterForm, AddDeviceForm, TerrariumSettingsForm
 
-# IMPORTY Z API (DLA TESTÓW)
 from apps.api.views import IoTUpdateView, DeviceAuthView, download_firmware as api_fw
 api_sensor_update = csrf_exempt(IoTUpdateView.as_view())
 api_device_auth = csrf_exempt(DeviceAuthView.as_view())
@@ -182,7 +181,7 @@ def api_get_latest_data(request, device_id):
     if reading:
         response_data['temp'] = reading.temp
         response_data['hum'] = reading.hum
-        response_data['last_seen'] = timezone.localtime(reading.timestamp).strftime('%H:%M:%S')
+        response_data['last_seen'] = timezone.localtime(reading.timestamp).strftime('%d.%m.%Y %H:%M:%S')
     else:
         response_data['temp'] = '--'; response_data['hum'] = '--'; response_data['last_seen'] = 'Brak danych'
     return JsonResponse(response_data)

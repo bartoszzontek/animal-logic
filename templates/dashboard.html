@@ -10,7 +10,7 @@
             <div>
                 <h1 style="margin: 0; font-size: 1.8rem;">{{ settings.name }}</h1>
                 <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
-                    ID: {{ settings.device_id }} • Ostatni odczyt: <span id="last-seen">{{ reading.timestamp|date:"H:i:s" }}</span>
+                    ID: {{ settings.device_id }} • Ostatni odczyt: <span id="last-seen">{{ reading.timestamp|date:"d.m.Y H:i:s" }}</span>
                 </p>
             </div>
         </div>
