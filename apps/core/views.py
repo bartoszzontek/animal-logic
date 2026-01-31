@@ -186,3 +186,13 @@ def api_get_latest_data(request, device_id):
     else:
         response_data['temp'] = '--'; response_data['hum'] = '--'; response_data['last_seen'] = 'Brak danych'
     return JsonResponse(response_data)
+
+@login_required
+def trigger_ota_update(request, device_id):
+    device = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+    if request.method == "POST":
+        device.update_required = True
+        device.save()
+        messages.success(request, f"Zlecono aktualizacje dla {device.name}. Czekam na połączenie... ")
+
+    return redirect('dashboard', device_id=device_id)

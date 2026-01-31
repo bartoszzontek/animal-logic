@@ -223,12 +223,24 @@ class IoTUpdateView(View):
                         if t and t.strftime("%H:%M") == current_hm:
                             cmd_mist = True
 
+                        # --- E. OBSŁUGA OTA (NOWOŚĆ) ---
+            cmd_ota = False
+
+             # Sprawdzamy, czy użytkownik kliknął przycisk w Dashboardzie
+            if device.update_required:
+                cmd_ota = True  # 1. Wysyłamy rozkaz "START UPDATE"
+                device.update_required = False  # 2. Opuszczamy flagę (żeby nie robił pętli aktualizacji)
+                device.save()
+
+
+
             # --- E. ODPOWIEDŹ (Teraz jest poza pętlą!) ---
             return JsonResponse({
                 'status': 'ok',
                 'heater': cmd_heat,
                 'mist': cmd_mist,
                 'light': cmd_light,
+                'ota': cmd_ota,
                 'target': target_temp,
                 'name': device.name
             })
