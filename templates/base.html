@@ -3,168 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AnimalLogic IoT</title>
+    <title>Animal Logic IoT</title>
     
-    <link rel="manifest" href="{% url 'manifest' %}">
-    <meta name="theme-color" content="#101412">
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+    
     <style>
-        :root {
-            /* Paleta Kolorów */
-            --bg-app: #101412;       /* Bardzo ciemny, prawie czarny */
-            --bg-card: #1e2321;      /* Ciemny szary z nutą zieleni */
-            --primary: #2d6a4f;      /* Główna zieleń */
-            --primary-hover: #40916c;
-            --text-main: #ffffff;
-            --text-muted: #a0a0a0;
-            --border: #333333;
-            
-            /* Statusy */
-            --danger: #e63946;
-            --warning: #f1c40f;
-            --success: #2d6a4f;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
+        /* --- STYLE BAZOWE (RESET) --- */
         body {
-            background-color: var(--bg-app);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #000; /* Głęboka czerń tła */
+            color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        /* --- NAVBAR --- */
-        .navbar {
-            background-color: rgba(30, 35, 33, 0.95);
+        /* --- NAVBAR (Pasek nawigacji) --- */
+        .main-navbar {
+            background-color: #131419; /* Ciemny szary, pasuje do kart */
+            border-bottom: 1px solid rgba(255,255,255,0.1);
             padding: 15px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
-            z-index: 100;
-            backdrop-filter: blur(10px);
+            z-index: 1000;
+            backdrop-filter: blur(10px); /* Efekt szkła */
         }
 
-        .navbar-brand {
-            font-size: 1.2rem;
+        /* Logo / Nazwa Projektu */
+        .nav-brand {
+            font-size: 1.3rem;
             font-weight: 800;
-            color: var(--text-main);
+            color: white;
             text-decoration: none;
-            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 1px;
+        }
+
+        .nav-brand:hover {
+            color: #5f27cd; /* Kolor Primary */
+            transition: 0.3s;
+        }
+
+        /* Prawa strona menu */
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Linki w menu */
+        .nav-link {
+            color: #8395a7;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .nav-link:hover {
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        /* Specjalny styl dla linku Admina */
+        .admin-link {
+            color: #ff6b6b; /* Czerwony */
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            padding: 4px 10px;
+            border-radius: 5px;
+            background: rgba(255, 107, 107, 0.1);
+        }
+        .admin-link:hover {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff4757;
+        }
+
+        /* Przycisk Wyloguj */
+        .btn-logout {
+            background: none;
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .btn-logout:hover {
+            background: #222;
+            border-color: #555;
+            color: white;
+        }
+
+        /* --- KONTENER NA TREŚĆ --- */
+        .content-wrapper {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+            flex: 1; /* Rozpycha footer na dół (jeśli kiedyś dodasz stopkę) */
+        }
+
+        /* --- STYL KOMUNIKATÓW (MESSAGES) --- */
+        .alert-box {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            border: 1px solid transparent;
+            animation: fadeIn 0.5s ease-in-out;
         }
         
-        .navbar-brand span { color: var(--primary-hover); }
+        .alert-success { background: rgba(0, 210, 211, 0.15); color: #00d2d3; border-color: rgba(0, 210, 211, 0.3); }
+        .alert-error { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; border-color: rgba(255, 107, 107, 0.3); }
+        .alert-info { background: #2f3640; color: #f5f6fa; border-color: #57606f; }
 
-        .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            margin-left: 20px;
-            font-size: 0.9rem;
-            transition: color 0.2s;
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .nav-links a:hover { color: var(--text-main); }
-
-        /* --- ALERTY (Messages) --- */
-        .messages-container {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            z-index: 1000;
-            width: 300px;
-        }
-
-        .alert {
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            color: white;
-            font-size: 0.9rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            animation: slideIn 0.3s ease-out;
-        }
-        .alert-success { background-color: var(--primary); }
-        .alert-error { background-color: var(--danger); }
-        .alert-info { background-color: #457b9d; }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        /* --- GŁÓWNA TREŚĆ --- */
-        main {
-            flex: 1;
-            padding: 20px;
-        }
-
-        /* --- CSS dla Dashboardu (Globalne klasy) --- */
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
+        /* Responsywność dla małych ekranów */
+        @media (max-width: 600px) {
+            .nav-brand span { display: none; } /* Ukrywa tekst logo na bardzo małych ekranach */
+            .main-navbar { padding: 10px 15px; }
+            .user-menu { gap: 10px; }
+            .nav-link span { display: none; } /* Ukrywa tekst linków, zostawia ikonki */
         }
     </style>
 </head>
 <body>
 
-    <nav class="navbar">
-        <a href="{% url 'home' %}" class="navbar-brand">Animal<span>Logic</span></a>
-        
-        <div class="nav-links">
+    <nav class="main-navbar">
+        <a href="{% url 'home' %}" class="nav-brand">
+            🐍 <span>Animal Logic</span>
+        </a>
+
+        <div class="user-menu">
             {% if user.is_authenticated %}
-                <a href="{% url 'home' %}">Pulpit</a>
-                {% if 'account_settings' in request.resolver_match.url_name %}
-                    {% else %}
-                    {% endif %}
-                <a href="{% url 'logout' %}" style="color: var(--danger);">Wyloguj</a>
+                <span style="color: #666; font-size: 0.85rem; margin-right: 5px;" class="desktop-only">
+                    {{ user.username }}
+                </span>
+                
+                {% if user.is_staff %}
+                    <a href="/admin/" class="nav-link admin-link" target="_blank" title="Panel Administratora">
+                        🛡️ <span>Admin</span>
+                    </a>
+                {% endif %}
+
+                <a href="{% url 'account_settings' %}" class="nav-link" title="Ustawienia Konta">
+                    ⚙️ <span>Konto</span>
+                </a>
+
+                <form action="{% url 'logout' %}" method="post" style="display: inline; margin-left: 5px;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-logout">Wyloguj</button>
+                </form>
+
             {% else %}
-                <a href="{% url 'login' %}">Zaloguj</a>
-                <a href="{% url 'register' %}" class="btn-primary" style="color:white; margin-left:10px;">Rejestracja</a>
+                <a href="{% url 'login' %}" class="nav-link" style="color: white;">Zaloguj się</a>
+                <a href="{% url 'register' %}" class="btn-logout" style="text-decoration: none;">Rejestracja</a>
             {% endif %}
         </div>
     </nav>
 
-    {% if messages %}
-        <div class="messages-container">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-        <script>
-            setTimeout(() => {
-                const alerts = document.querySelectorAll('.alert');
-                alerts.forEach(el => el.style.display = 'none');
-            }, 4000);
-        </script>
-    {% endif %}
+    <div class="content-wrapper">
+        
+        {% if messages %}
+            <div>
+                {% for message in messages %}
+                    <div class="alert-box {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
 
-    <main>
         {% block content %}
         {% endblock %}
-    </main>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register("{% url 'service_worker' %}")
-            .catch(err => console.log('SW Error:', err));
-        }
-    </script>
+        
+    </div>
 
 </body>
 </html>
