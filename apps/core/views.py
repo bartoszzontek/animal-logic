@@ -171,6 +171,15 @@ def chart_data(request, device_id):
 @login_required
 def api_get_latest_data(request, device_id):
     terrarium = get_object_or_404(Terrarium, device_id=device_id, owner=request.user)
+
+    real_live_status = terrarium.is_active
+
+
+    if terrarium.is_online != real_live_status:
+        terrarium.is_online = real_live_status
+        terrarium.save(update_fields=['is_online'])
+
+
     reading = Reading.objects.filter(terrarium=terrarium).order_by('-timestamp').first()
     response_data = {
         'online': terrarium.is_active,

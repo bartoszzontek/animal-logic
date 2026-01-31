@@ -5,7 +5,7 @@
     
     <header class="device-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 15px;">
-            <div style="width: 15px; height: 15px; border-radius: 50%; background-color: {% if settings.is_online %}var(--success){% else %}var(--danger){% endif %}; box-shadow: 0 0 10px {% if settings.is_online %}var(--success){% else %}var(--danger){% endif %};"></div>
+            <div id="main-status-dot" style="width: 15px; height: 15px; border-radius: 50%; background-color: {% if settings.is_online %}var(--success){% else %}var(--danger){% endif %}; box-shadow: 0 0 10px {% if settings.is_online %}var(--success){% else %}var(--danger){% endif %}; transition: 0.3s;"></div>
             
             <div>
                 <h1 style="margin: 0; font-size: 1.8rem;">{{ settings.name }}</h1>
@@ -323,11 +323,38 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     .checkbox-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; }
     
+    /* --- GHOST MODE (OFFLINE STYLES) --- */
+    
+    /* Wyblakłe wartości liczbowe */
+    .ghost-value {
+        opacity: 0.4;
+        filter: grayscale(100%);
+        transition: 0.5s;
+    }
+
+    /* Ostrzegawcza ikonka przy temperaturze */
+    .warning-icon {
+        display: inline-block;
+        font-size: 1rem;
+        margin-left: 5px;
+        animation: blink 2s infinite;
+        color: var(--warning);
+    }
+
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+    /* Szary pasek statusu */
+    .status-bar.offline-bg {
+        background-color: #222;
+        color: #666;
+        border: 1px solid #333;
+    }
+
     @media (max-width: 600px) { .readings-grid { grid-template-columns: 1fr 1fr; } }
 </style>
 
 <script>
-    // 1. WYKRES
+    // 1. WYKRES (Standard Chart.js)
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('tempChart').getContext('2d');
         fetch('/api/chart/{{ settings.device_id }}/')
@@ -364,43 +391,99 @@
             }).catch(err => console.error(err));
     });
 
-    // 2. LIVE UPDATE
+    // 2. LIVE UPDATE & GHOST MODE
     function refreshDashboard() {
         const deviceId = "{{ settings.device_id }}";
         fetch(`/api/status/${deviceId}/`)
             .then(response => response.json())
             .then(data => {
-                document.getElementById('live-temp').innerText = data.temp;
-                document.getElementById('live-hum').innerText = data.hum;
-                if(data.last_seen) document.getElementById('last-seen').innerText = data.last_seen;
+                const isOnline = data.online; 
 
-                updateCard('heater', data.heater, 'active-red', 'active-bg-red', 'border-red', '🔥 GRZEJE', '💤 CZUWA');
-                updateCard('mist', data.mist, 'active-blue', 'active-bg-blue', 'border-blue', '💦 ZRASZA', '🌵 SUCHO');
+                // --- AKTUALIZACJA CZASU I DIODY ---
+                if(data.last_seen) document.getElementById('last-seen').innerText = data.last_seen;
                 
-                const dotLight = document.getElementById('dot-light');
-                if (data.light) dotLight.classList.add('active-yellow'); else dotLight.classList.remove('active-yellow');
+                const mainDot = document.getElementById('main-status-dot');
+                if (isOnline) {
+                    mainDot.style.backgroundColor = 'var(--success)';
+                    mainDot.style.boxShadow = '0 0 10px var(--success)';
+                } else {
+                    mainDot.style.backgroundColor = 'var(--danger)';
+                    mainDot.style.boxShadow = '0 0 10px var(--danger)';
+                }
+
+                // --- ODCZYTY (Ghost Mode) ---
+                const tempVal = document.getElementById('live-temp');
+                const humVal = document.getElementById('live-hum');
+                
+                tempVal.innerText = data.temp;
+                humVal.innerText = data.hum;
+
+                if (!isOnline) {
+                    // Tryb Offline: Dodaj klasę "duch" i ikonkę
+                    tempVal.parentElement.classList.add('ghost-value');
+                    humVal.parentElement.classList.add('ghost-value');
+                    
+                    if (!tempVal.innerHTML.includes('⚠️')) {
+                        tempVal.innerHTML += ' <span class="warning-icon" title="Dane mogą być nieaktualne">⚠️</span>';
+                    }
+                } else {
+                    // Tryb Online: Wyczyść style offline
+                    tempVal.parentElement.classList.remove('ghost-value');
+                    humVal.parentElement.classList.remove('ghost-value');
+                    const warn = tempVal.querySelector('.warning-icon');
+                    if (warn) warn.remove();
+                }
+
+                // --- AKTUALIZACJA KART STEROWANIA ---
+                updateCard('heater', data.heater, isOnline, 'active-red', 'active-bg-red', 'border-red', '🔥 GRZEJE', '💤 CZUWA');
+                updateCard('mist', data.mist, isOnline, 'active-blue', 'active-bg-blue', 'border-blue', '💦 ZRASZA', '🌵 SUCHO');
+                updateLightCard(data.light, isOnline);
+
             }).catch(err => console.error(err));
     }
 
-    function updateCard(type, isActive, dotClass, bgClass, borderClass, textOn, textOff) {
+    // Funkcja aktualizująca karty (Grzałka, Zraszacz)
+    function updateCard(type, isActive, isOnline, dotClass, bgClass, borderClass, textOn, textOff) {
         const card = document.getElementById(`card-${type}`);
         const dot = document.getElementById(`dot-${type}`);
         const bar = document.getElementById(`status-${type}-bg`);
         const text = document.getElementById(`status-${type}-text`);
 
-        if (isActive) {
-            dot.classList.add(dotClass);
-            bar.classList.add(bgClass);
-            card.classList.add(borderClass);
-            text.innerHTML = textOn;
+        // Reset stylów
+        dot.classList.remove(dotClass);
+        bar.classList.remove(bgClass);
+        card.classList.remove(borderClass);
+        bar.classList.remove('offline-bg');
+
+        if (!isOnline) {
+            // OFFLINE
+            text.innerHTML = '📡 BRAK POŁĄCZENIA';
+            bar.classList.add('offline-bg');
         } else {
-            dot.classList.remove(dotClass);
-            bar.classList.remove(bgClass);
-            card.classList.remove(borderClass);
-            text.innerHTML = textOff;
+            // ONLINE
+            if (isActive) {
+                dot.classList.add(dotClass);
+                bar.classList.add(bgClass);
+                card.classList.add(borderClass);
+                text.innerHTML = textOn;
+            } else {
+                text.innerHTML = textOff;
+            }
         }
     }
 
+    // Funkcja aktualizująca kartę Światła
+    function updateLightCard(isLightOn, isOnline) {
+        const dotLight = document.getElementById('dot-light');
+        dotLight.classList.remove('active-yellow');
+        
+        if (isOnline && isLightOn) {
+            dotLight.classList.add('active-yellow');
+        }
+        // Jeśli offline, kropka jest szara (domyślnie)
+    }
+
+    // Odświeżaj co 3 sekundy
     setInterval(refreshDashboard, 3000);
 </script>
 {% endblock %}
