@@ -2,13 +2,18 @@ name: Deploy to Raspberry Pi
 
 # Uruchom, gdy wpadnie commit na branch 'main'
 on:
-  push:
-    branches: [ "main" ]
+  workflow_run:
+    workflows: ["Django CI"]  # <--- Tu wpisz DOKŁADNĄ nazwę workflowu z testami (tę co widzisz na liście)
+    types:
+      - completed
+    branches: [main]
 
 jobs:
   deploy:
     # Użyj agenta zainstalowanego na Malince
     runs-on: self-hosted
+
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       # Krok 0: Wypisz debuggowo, gdzie jesteśmy
