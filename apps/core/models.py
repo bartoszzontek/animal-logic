@@ -6,7 +6,6 @@ import datetime
 from datetime import timedelta
 import secrets
 
-# ... (AllowedDevice zostaje bez zmian) ...
 class AllowedDevice(models.Model):
     device_id = models.CharField(max_length=50, unique=True)
     pin_hash = models.CharField(max_length=128)
@@ -64,16 +63,23 @@ class Terrarium(models.Model):
     last_seen = models.DateTimeField(null=True, blank=True)
     is_online = models.BooleanField(default=False)
 
-    # --- NOWE POLA (Status LIVE z Tasmoty) ---
-    # To pokazuje nam na dashboardzie, czy urządzenia faktycznie działają
+    # (Status LIVE z Tasmoty)
+
     is_heating = models.BooleanField(default=False)
     is_misting = models.BooleanField(default=False)
     is_lighting = models.BooleanField(default=False)
 
+    # Mechanizm Ota online
+
+    update_required = models.BooleanField(default=False,  verbose_name="Update OTA Required")
+
     @property
     def is_active(self):
         if not self.last_seen: return False
-        return (timezone.now() - self.last_seen) < timedelta(seconds=30) # Zwiększyłem do 60s
+        return (timezone.now() - self.last_seen) < timedelta(seconds=30)
+
+
+
 
     def __str__(self):
         return f"{self.name} ({self.device_id})"
