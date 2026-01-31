@@ -1,7 +1,7 @@
 """
 Django settings for animalLogic project.
 """
-
+from django.urls import reverse_lazy
 from pathlib import Path
 import os
 import sys
@@ -39,6 +39,11 @@ CSRF_TRUSTED_ORIGINS = [
 # --- APLIKACJE ---
 
 INSTALLED_APPS = [
+    "unfold",
+    "unfold.contrib.filters",  # Opcjonalne: Ładne filtry po prawej
+    "unfold.contrib.forms",    # Opcjonalne: Ładne formularze
+    "unfold.contrib.import_export",  # Opcjonalne: Jeśli używasz import-export
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -167,3 +172,56 @@ SENSOR_API_TOKEN = "dI-Fdlp40BeaJWzaEPBPnHh0afiz_5EvKaOqjZGgeYc"
 LOGIN_URL = 'login'            # Gdzie przekierować niezalogowanego (na Twój widok /login/)
 LOGIN_REDIRECT_URL = 'home'    # Gdzie przenieść po udanym logowaniu
 LOGOUT_REDIRECT_URL = 'login'  # Gdzie przenieść po wylogowaniu
+
+# --- KONFIGURACJA UNFOLD (WYGLĄD ADMINA) ---
+UNFOLD = {
+    "SITE_TITLE": "Animal Logic Admin",
+    "SITE_HEADER": "Animal Logic",
+    "SITE_URL": "/",
+    # "SITE_ICON": lambda request: static("icon.svg"),  # Możesz dodać ikonkę
+
+    # Kolorystyka (Teal/Green pasuje do Twojego motywu)
+    "COLORS": {
+        "primary": {
+            "50": "236 253 245",
+            "100": "209 250 229",
+            "200": "167 243 208",
+            "300": "110 231 183",
+            "400": "52 211 153",
+            "500": "16 185 129",
+            "600": "5 150 105",
+            "700": "4 120 87",
+            "800": "6 95 70",
+            "900": "6 78 59",
+        },
+    },
+
+    # Pasek boczny (Sidebar)
+    "SIDEBAR": {
+        "show_search": True,  # Wyszukiwarka w menu
+        "show_all_applications": True,
+        "navigation": [
+            {
+                "title": "Zarządzanie Terrarium",
+                "separator": True,  # Linia oddzielająca
+                "items": [
+                    {
+                        "title": "Urządzenia",
+                        "icon": "desktop_windows",  # Ikony Material Symbols
+                        "link": reverse_lazy("admin:core_terrarium_changelist"),
+                    },
+                    {
+                        "title": "Pomiary (Readings)",
+                        "icon": "sensors",
+                        "link": reverse_lazy("admin:core_reading_changelist"),
+                    },
+                    {
+                        "title": "Użytkownicy",
+                        "icon": "people",
+                        "link": reverse_lazy("admin:auth_user_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
+}
