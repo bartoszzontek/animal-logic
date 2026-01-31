@@ -1,0 +1,28 @@
+/* apps/core/static/css/admin_overrides.css */
+
+/* Wymuszenie ramki na polach input */
+.relative input[type="text"],
+.relative input[type="password"],
+.relative input[type="email"],
+.relative input[type="number"],
+.relative input[type="url"],
+.relative select,
+.relative textarea {
+    border: 1px solid #4b5563 !important; /* Szary Tailwind 600 */
+    background-color: rgba(30, 41, 59, 0.5) !important; /* Ciemne tło */
+    border-radius: 6px !important;
+}
+
+/* Efekt po kliknięciu (Focus) */
+.relative input:focus,
+.relative select:focus,
+.relative textarea:focus {
+    border-color: #10b981 !important; /* Twój zielony */
+    box-shadow: 0 0 0 1px #10b981 !important;
+}
+
+/* Naprawa kontrastu etykiet (Labeli) */
+label {
+    font-weight: 600 !important;
+    opacity: 1 !important;
+}
