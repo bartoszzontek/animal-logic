@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
 <div class="dashboard-container">
@@ -33,6 +34,7 @@
     </div>
 
     <h2 class="section-title" style="margin: 30px 0 15px 0; border-left: 4px solid var(--primary); padding-left: 10px;">Sterowanie</h2>
+    
     <div class="controls-grid">
         
         <div class="card control-card" id="card-light">
@@ -41,30 +43,37 @@
                 <div id="dot-light" class="status-dot {% if reading.light %}active-yellow{% endif %}"></div>
             </div>
             
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 5px 0;">
-                Tryb: <strong>{{ settings.get_light_mode_display }}</strong>
-            </p>
-
-            <a href="{% url 'switch_light_mode' settings.device_id %}" class="btn-toggle" style="margin-top: 10px; background: rgba(255,255,255,0.1);">
-                {% if settings.light_mode == 'auto' %}
-                    Przełącz na RĘCZNY
-                {% else %}
-                    Wróć do AUTOMATU
-                {% endif %}
-            </a>
-
-            {% if settings.light_mode == 'manual' %}
-                <a href="{% url 'toggle_light_state' settings.device_id %}" class="btn-toggle" 
-                   style="margin-top: 10px; background: {% if settings.light_manual_state %}var(--warning){% else %}#333{% endif %}; color: {% if settings.light_manual_state %}black{% else %}white{% endif %}; border: 1px solid #444;">
-                    {% if settings.light_manual_state %}ZGAŚ ŚWIATŁO{% else %}ZAPAL ŚWIATŁO{% endif %}
-                </a>
-            {% endif %}
-
-            {% if settings.light_mode == 'auto' %}
-                <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">
-                    Godziny: {{ settings.light_start|date:"H:i" }} - {{ settings.light_end|date:"H:i" }}
+            <div class="card-body">
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0;">
+                    Tryb: <strong>{{ settings.get_light_mode_display }}</strong>
                 </p>
-            {% endif %}
+                {% if settings.light_mode == 'auto' %}
+                    <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                        🕒 {{ settings.light_start|date:"H:i" }} - {{ settings.light_end|date:"H:i" }}
+                    </p>
+                {% endif %}
+            </div>
+
+            <div class="light-controls">
+                <a href="{% url 'switch_light_mode' settings.device_id %}" class="btn-mode">
+                    {% if settings.light_mode == 'auto' %}
+                        ✋ Przełącz na RĘCZNY
+                    {% else %}
+                        🔄 Wróć do AUTOMATU
+                    {% endif %}
+                </a>
+
+                {% if settings.light_mode == 'manual' %}
+                    <a href="{% url 'toggle_light_state' settings.device_id %}" 
+                       class="btn-light-action {% if settings.light_manual_state %}on{% endif %}">
+                        {% if settings.light_manual_state %}
+                            💡 ZGAŚ ŚWIATŁO
+                        {% else %}
+                            🌑 ZAPAL ŚWIATŁO
+                        {% endif %}
+                    </a>
+                {% endif %}
+            </div>
         </div>
 
         <div class="card control-card" id="card-heater">
@@ -304,14 +313,64 @@
     .status-bar.active-bg-red { background-color: rgba(255, 107, 107, 0.2); color: var(--danger); border: 1px solid rgba(255, 107, 107, 0.3); }
     .status-bar.active-bg-blue { background-color: rgba(0, 210, 211, 0.2); color: var(--success); border: 1px solid rgba(0, 210, 211, 0.3); }
 
-    .btn-toggle {
-        background: rgba(255,255,255,0.05); color: white; text-decoration: none;
-        padding: 12px; text-align: center; border-radius: 8px; margin-top: 15px;
-        border: none; width: 100%; display: block; font-weight: 600; font-size: 0.9rem; transition: 0.2s;
-    }
-    .btn-toggle:hover { background: rgba(255,255,255,0.1); }
+    /* --- NOWE STYLE DLA PRZYCISKÓW ŚWIATŁA --- */
     
-    /* Przyciski */
+    .light-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: auto; 
+        padding-top: 15px;
+    }
+
+    /* Mały, szary przycisk zmiany trybu */
+    .btn-mode {
+        background: rgba(255, 255, 255, 0.05);
+        color: #888;
+        padding: 8px;
+        text-align: center;
+        text-decoration: none;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        border: 1px solid rgba(255,255,255,0.1);
+        transition: 0.2s;
+    }
+    .btn-mode:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+    }
+
+    /* Główny przycisk włączania/wyłączania */
+    .btn-light-action {
+        display: block;
+        padding: 15px;
+        text-align: center;
+        text-decoration: none;
+        border-radius: 10px;
+        font-weight: bold;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        
+        /* Styl domyślny (WYŁĄCZONE - Ciemny) */
+        background: #2d3436;
+        color: #dfe6e9;
+        border: 1px solid #636e72;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+    }
+
+    /* Styl aktywny (WŁĄCZONE - Żółty) */
+    .btn-light-action.on {
+        background: var(--warning); /* Żółty */
+        color: #2d3436;             /* Ciemny tekst */
+        border: 1px solid var(--warning);
+        box-shadow: 0 0 15px rgba(254, 202, 87, 0.4); /* Poświata */
+    }
+
+    .btn-light-action:active {
+        transform: scale(0.98);
+    }
+
+    /* Przyciski ogólne */
     .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
     .btn-secondary { background: #333; border: 1px solid #444; color: #ccc; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
@@ -324,31 +383,10 @@
     .checkbox-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; }
     
     /* --- GHOST MODE (OFFLINE STYLES) --- */
-    
-    /* Wyblakłe wartości liczbowe */
-    .ghost-value {
-        opacity: 0.4;
-        filter: grayscale(100%);
-        transition: 0.5s;
-    }
-
-    /* Ostrzegawcza ikonka przy temperaturze */
-    .warning-icon {
-        display: inline-block;
-        font-size: 1rem;
-        margin-left: 5px;
-        animation: blink 2s infinite;
-        color: var(--warning);
-    }
-
+    .ghost-value { opacity: 0.4; filter: grayscale(100%); transition: 0.5s; }
+    .warning-icon { display: inline-block; font-size: 1rem; margin-left: 5px; animation: blink 2s infinite; color: var(--warning); }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-
-    /* Szary pasek statusu */
-    .status-bar.offline-bg {
-        background-color: #222;
-        color: #666;
-        border: 1px solid #333;
-    }
+    .status-bar.offline-bg { background-color: #222; color: #666; border: 1px solid #333; }
 
     @media (max-width: 600px) { .readings-grid { grid-template-columns: 1fr 1fr; } }
 </style>
@@ -419,15 +457,12 @@
                 humVal.innerText = data.hum;
 
                 if (!isOnline) {
-                    // Tryb Offline: Dodaj klasę "duch" i ikonkę
                     tempVal.parentElement.classList.add('ghost-value');
                     humVal.parentElement.classList.add('ghost-value');
-                    
                     if (!tempVal.innerHTML.includes('⚠️')) {
                         tempVal.innerHTML += ' <span class="warning-icon" title="Dane mogą być nieaktualne">⚠️</span>';
                     }
                 } else {
-                    // Tryb Online: Wyczyść style offline
                     tempVal.parentElement.classList.remove('ghost-value');
                     humVal.parentElement.classList.remove('ghost-value');
                     const warn = tempVal.querySelector('.warning-icon');
@@ -449,18 +484,15 @@
         const bar = document.getElementById(`status-${type}-bg`);
         const text = document.getElementById(`status-${type}-text`);
 
-        // Reset stylów
         dot.classList.remove(dotClass);
         bar.classList.remove(bgClass);
         card.classList.remove(borderClass);
         bar.classList.remove('offline-bg');
 
         if (!isOnline) {
-            // OFFLINE
             text.innerHTML = '📡 BRAK POŁĄCZENIA';
             bar.classList.add('offline-bg');
         } else {
-            // ONLINE
             if (isActive) {
                 dot.classList.add(dotClass);
                 bar.classList.add(bgClass);
@@ -480,7 +512,6 @@
         if (isOnline && isLightOn) {
             dotLight.classList.add('active-yellow');
         }
-        // Jeśli offline, kropka jest szara (domyślnie)
     }
 
     // Odświeżaj co 3 sekundy
