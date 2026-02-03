@@ -5,11 +5,12 @@ services:
   db:
     image: postgres:15-alpine
     volumes:
-      # ZMIANA TUTAJ: Nowa nazwa wolumenu wymusi świeży start
-      - postgres_data_new:/var/lib/postgresql/data
+      # ZMIANA: Nowa nazwa wolumenu = start od absolutnego zera
+      - postgres_data_final:/var/lib/postgresql/data
     environment:
+      # Używamy domyślnego użytkownika 'postgres' - on działa zawsze
       - POSTGRES_DB=animallogic
-      - POSTGRES_USER=app_user
+      - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=tajnehaslo123
     restart: always
 
@@ -28,7 +29,7 @@ services:
       # Baza danych
       - DB_ENGINE=django.db.backends.postgresql
       - DB_NAME=animallogic
-      - DB_USER=app_user
+      - DB_USER=postgres            # ZMIANA: Musi pasować do sekcji db
       - DB_PASSWORD=tajnehaslo123
       - DB_HOST=db
       - DB_PORT=5432
@@ -59,6 +60,5 @@ services:
       - nginx
 
 volumes:
-  # ZMIANA TUTAJ: Definicja nowego wolumenu
-  postgres_data_new:
+  postgres_data_final:
   static_volume:
