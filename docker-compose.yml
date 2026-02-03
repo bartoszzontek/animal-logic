@@ -1,18 +1,22 @@
 version: '3.8'
 
 services:
-  # 1. Baza Danych
+  # 1. Baza Danych (Start od zera)
   db:
     image: postgres:15-alpine
     volumes:
-      # ZMIANA: Nowa nazwa wolumenu = start od absolutnego zera
-      - postgres_data_final:/var/lib/postgresql/data
+      # Nowa nazwa wolumenu = czysta baza, bez błędów przeszłości
+      - postgres_data_final_v3:/var/lib/postgresql/data
     environment:
-      # Używamy domyślnego użytkownika 'postgres' - on działa zawsze
       - POSTGRES_DB=animallogic
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=tajnehaslo123
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # 2. Django (Aplikacja)
   web:
@@ -26,20 +30,21 @@ services:
     environment:
       - SECRET_KEY=twoj_klucz_zmien_go_na_produkcji
       - DEBUG=1
-      # Baza danych
+      # Konfiguracja Bazy - TU JEST KLUCZ (używamy postgres)
       - DB_ENGINE=django.db.backends.postgresql
       - DB_NAME=animallogic
-      - DB_USER=postgres            # ZMIANA: Musi pasować do sekcji db
+      - DB_USER=postgres
       - DB_PASSWORD=tajnehaslo123
       - DB_HOST=db
       - DB_PORT=5432
       # Adresy
       - ALLOWED_HOSTS=localhost,127.0.0.1,animal-server.local,192.168.31.161,animal.zipit.pl,www.animal.zipit.pl
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: always
 
-  # 3. Nginx (Serwer WWW)
+  # 3. Nginx
   nginx:
     image: nginx:1.25-alpine
     volumes:
@@ -51,14 +56,15 @@ services:
       - web
     restart: always
 
-  # 4. Cloudflare Tunnel
+  # 4. Tunel Cloudflare
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: always
+    # Tu jest Twój token z poprzednich logów
     command: tunnel run --token eyJhIjoiZTg4N2JmMTY2N2JjOTk1MDUwNWUyNDdlZGIzMjIzYWMiLCJ0IjoiNjhmNTdhMzMtNDM0Ni00NWJiLTg5YTAtNGYzZmU5YmEwOTJjIiwicyI6IlpqaGlabU5tWXpjdFltTmtPUzAwWlRRMkxUZ3dabVV0T0RCaE0yUmtZV0V3TVRaaCJ9
     depends_on:
       - nginx
 
 volumes:
-  postgres_data_final:
+  postgres_data_final_v3:
   static_volume:
