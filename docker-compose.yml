@@ -9,7 +9,7 @@ services:
       - postgres_data_new:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=animallogic
-      - POSTGRES_USER=admin
+      - POSTGRES_USER=app_user
       - POSTGRES_PASSWORD=tajnehaslo123
     restart: always
 
@@ -28,7 +28,7 @@ services:
       # Baza danych
       - DB_ENGINE=django.db.backends.postgresql
       - DB_NAME=animallogic
-      - DB_USER=admin
+      - DB_USER=app_user
       - DB_PASSWORD=tajnehaslo123
       - DB_HOST=db
       - DB_PORT=5432
