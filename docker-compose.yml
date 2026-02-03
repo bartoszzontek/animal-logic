@@ -1,42 +1,44 @@
 version: '3.8'
 
 services:
-  # 1. Baza Danych (Start od zera)
+  # Baza Danych (Postgres)
   db:
     image: postgres:15-alpine
     volumes:
-      # Nowa nazwa wolumenu = czysta baza, bez błędów przeszłości
-      - postgres_data_final_v3:/var/lib/postgresql/data
+      # Zmieniamy wolumen na v4, żeby na pewno było czysto
+      - postgres_data_trust_v4:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=animallogic
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=tajnehaslo123
+      - POSTGRES_USER=admin          # Ustawiamy 'admin', bo Django tak chce
+      - POSTGRES_PASSWORD=cokolwiek  # Hasło nie ma znaczenia w trybie trust
+      - POSTGRES_HOST_AUTH_METHOD=trust # <--- TO JEST KLUCZ DO SUKCESU
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U admin"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # 2. Django (Aplikacja)
+  # Aplikacja (Django)
   web:
     build: .
-    command: bash -c "python manage.py collectstatic --noinput && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000"
+    # Najpierw static, potem migracje, potem start
+    command: bash -c "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
     expose:
       - 8000
     environment:
-      - SECRET_KEY=twoj_klucz_zmien_go_na_produkcji
+      - SECRET_KEY=twoj_klucz_produkcyjny
       - DEBUG=1
-      # Konfiguracja Bazy - TU JEST KLUCZ (używamy postgres)
+      # Konfiguracja bazy
       - DB_ENGINE=django.db.backends.postgresql
       - DB_NAME=animallogic
-      - DB_USER=postgres
-      - DB_PASSWORD=tajnehaslo123
+      - DB_USER=admin       # Musi pasować do bazy
       - DB_HOST=db
       - DB_PORT=5432
+      - DB_PASSWORD=cokolwiek # Baza to zignoruje, ale Django musi coś wysłać
       # Adresy
       - ALLOWED_HOSTS=localhost,127.0.0.1,animal-server.local,192.168.31.161,animal.zipit.pl,www.animal.zipit.pl
     depends_on:
@@ -44,7 +46,7 @@ services:
         condition: service_healthy
     restart: always
 
-  # 3. Nginx
+  # Nginx
   nginx:
     image: nginx:1.25-alpine
     volumes:
@@ -56,15 +58,14 @@ services:
       - web
     restart: always
 
-  # 4. Tunel Cloudflare
+  # Tunel Cloudflare
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: always
-    # Tu jest Twój token z poprzednich logów
     command: tunnel run --token eyJhIjoiZTg4N2JmMTY2N2JjOTk1MDUwNWUyNDdlZGIzMjIzYWMiLCJ0IjoiNjhmNTdhMzMtNDM0Ni00NWJiLTg5YTAtNGYzZmU5YmEwOTJjIiwicyI6IlpqaGlabU5tWXpjdFltTmtPUzAwWlRRMkxUZ3dabVV0T0RCaE0yUmtZV0V3TVRaaCJ9
     depends_on:
       - nginx
 
 volumes:
-  postgres_data_final_v3:
+  postgres_data_trust_v4:
   static_volume:
