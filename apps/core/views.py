@@ -35,16 +35,40 @@ def register_view(request):
         form = RegisterForm()
     return render(request, 'register.html', {'form': form})
 
+
+from django.contrib.auth import authenticate, login, logout  # Dodaj logout
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
+
 def login_view(request):
+    # 1. Jeśli użytkownik jest już zalogowany, wywal go na główną
+    if request.user.is_authenticated:
+        return redirect('home')
+
     if request.method == "POST":
-        u = request.POST.get('username')
-        p = request.POST.get('password')
+        # 2. .strip() usuwa spacje, które telefon często dodaje na końcu loginu!
+        u = request.POST.get('username', '').strip()
+        p = request.POST.get('password', '')
+
+        # 3. WAŻNE: Czyścimy stare sesje przed próbą logowania
+        # To naprawia błędy po resecie bazy danych
+        if request.session.session_key:
+            request.session.flush()
+
         user = authenticate(request, username=u, password=p)
+
         if user is not None:
             login(request, user)
+
+            # 4. Obsługa parametru ?next= (żeby wrócił tam, gdzie chciał wejść)
+            next_url = request.GET.get('next')
+            if next_url:
+                return redirect(next_url)
             return redirect('home')
         else:
             messages.error(request, "Błędne dane logowania")
+
     return render(request, 'login.html')
 
 @login_required
