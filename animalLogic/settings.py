@@ -12,6 +12,12 @@ DEBUG = int(os.environ.get('DEBUG', 1))
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
+# Wyloguj użytkownika po zamknięciu przeglądarki
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Opcjonalnie: Twardy limit czasu sesji (np. 1 godzina = 3600 sekund)
+# Po tym czasie wyloguje nawet jak przeglądarka jest otwarta
+SESSION_COOKIE_AGE = 3600
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
