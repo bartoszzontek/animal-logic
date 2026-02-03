@@ -104,7 +104,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'system@animallogic.pl'
-
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SENSOR_API_TOKEN = "dI-Fdlp40BeaJWzaEPBPnHh0afiz_5EvKaOqjZGgeYc"
 
 LOGIN_URL = 'login'

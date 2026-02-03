@@ -5,7 +5,8 @@ services:
   db:
     image: postgres:15-alpine
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # ZMIANA TUTAJ: Nowa nazwa wolumenu wymusi świeży start
+      - postgres_data_new:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=animallogic
       - POSTGRES_USER=admin
@@ -15,7 +16,6 @@ services:
   # 2. Django (Aplikacja)
   web:
     build: .
-    # Najpierw zbieramy pliki statyczne, potem odpalamy serwer
     command: bash -c "python manage.py collectstatic --noinput && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - .:/app
@@ -32,7 +32,7 @@ services:
       - DB_PASSWORD=tajnehaslo123
       - DB_HOST=db
       - DB_PORT=5432
-      # Adresy (Ważne!)
+      # Adresy
       - ALLOWED_HOSTS=localhost,127.0.0.1,animal-server.local,192.168.31.161,animal.zipit.pl,www.animal.zipit.pl
     depends_on:
       - db
@@ -50,15 +50,15 @@ services:
       - web
     restart: always
 
-  # 4. Cloudflare Tunnel (Twoja autostrada)
+  # 4. Cloudflare Tunnel
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: always
-    # TWÓJ TOKEN JEST TUTAJ:
     command: tunnel run --token eyJhIjoiZTg4N2JmMTY2N2JjOTk1MDUwNWUyNDdlZGIzMjIzYWMiLCJ0IjoiNjhmNTdhMzMtNDM0Ni00NWJiLTg5YTAtNGYzZmU5YmEwOTJjIiwicyI6IlpqaGlabU5tWXpjdFltTmtPUzAwWlRRMkxUZ3dabVV0T0RCaE0yUmtZV0V3TVRaaCJ9
     depends_on:
       - nginx
 
 volumes:
-  postgres_data:
+  # ZMIANA TUTAJ: Definicja nowego wolumenu
+  postgres_data_new:
   static_volume:
