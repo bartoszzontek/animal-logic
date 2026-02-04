@@ -3,32 +3,15 @@ from pathlib import Path
 from django.urls import reverse_lazy
 from django.templatetags.static import static
 
+# =========================================================
+# PODSTAWOWA KONFIGURACJA
+# =========================================================
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-123')
 
 DEBUG = int(os.environ.get('DEBUG', 1))
-
-# --- FIX WYDAJNOŚCI DLA RASPBERRY PI (MD5) ---
-# To jest KLUCZOWE dla płynnego logowania na RPi.
-# Zmienia algorytm na MD5 (szybki) zamiast domyślnego PBKDF2 (wolny i obciążający CPU).
-PASSWORD_HASHERS = [
-    "django.contrib.auth.hashers.MD5PasswordHasher",
-    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
-    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
-    "django.contrib.auth.hashers.Argon2PasswordHasher",
-]
-
-# --- CLOUDFLARE FIX ---
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-USE_X_FORWARDED_HOST = True
-USE_X_FORWARDED_PORT = True
-
-# Wyloguj użytkownika po zamknięciu przeglądarki
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-
-# Opcjonalnie: Twardy limit czasu sesji (1 godzina)
-SESSION_COOKIE_AGE = 3600
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -41,17 +24,47 @@ CSRF_TRUSTED_ORIGINS = [
     'http://192.168.31.161'
 ]
 
+# =========================================================
+# OPTYMALIZACJA WYDAJNOŚCI (Load Tests & RPi)
+# =========================================================
+
+# Zmiana algorytmu hasłowania na MD5 (Szybkie logowanie przy dużym ruchu)
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+]
+
+# Obsługa proxy (Cloudflare/Nginx)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
+# Sesje
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 3600  # 1 godzina
+
+# =========================================================
+# APLIKACJE I MIDDLEWARE
+# =========================================================
+
 INSTALLED_APPS = [
+    # Unfold Admin (musi być przed django.contrib.admin)
     "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",
     "unfold.contrib.import_export",
+
+    # Standardowe aplikacje Django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Twoje aplikacje
     'apps.core',
     'apps.api',
 ]
@@ -86,7 +99,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'animalLogic.wsgi.application'
 
-# Konfiguracja Bazy Danych
+# =========================================================
+# BAZA DANYCH
+# =========================================================
+
 if os.environ.get('DB_ENGINE') == 'django.db.backends.postgresql':
     DATABASES = {
         'default': {
@@ -96,17 +112,22 @@ if os.environ.get('DB_ENGINE') == 'django.db.backends.postgresql':
             'PASSWORD': os.environ.get('DB_PASSWORD'),
             'HOST': os.environ.get('DB_HOST'),
             'PORT': os.environ.get('DB_PORT', '5432'),
-            'CONN_MAX_AGE': 600,
+            # WAŻNE: Skrócone z 600 na 60 sekund, aby zwalniać połączenia przy dużym ruchu
+            'CONN_MAX_AGE': 60,
         }
     }
 else:
-    # Fallback na SQLite (gdyby Postgres nie zadziałał lokalnie)
+    # Fallback na SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+
+# =========================================================
+# POZOSTAŁE USTAWIENIA
+# =========================================================
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -136,7 +157,10 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
 
-# Konfiguracja Unfold Admin
+# =========================================================
+# KONFIGURACJA UNFOLD ADMIN
+# =========================================================
+
 UNFOLD = {
     "SITE_TITLE": "Animal Logic Admin",
     "SITE_HEADER": "Animal Logic",
