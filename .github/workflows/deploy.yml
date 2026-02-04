@@ -1,63 +1,69 @@
 name: Deploy to Raspberry Pi
 
-# Uruchom, gdy wpadnie commit na branch 'main'
 on:
   workflow_run:
-    workflows: ["Django CI"]  # <--- Tu wpisz DOKŁADNĄ nazwę workflowu z testami (tę co widzisz na liście)
+    workflows: ["Django CI"]
     types:
       - completed
     branches: [main]
 
 jobs:
   deploy:
-    # Użyj agenta zainstalowanego na Malince
     runs-on: self-hosted
 
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      # Krok 0: Wypisz debuggowo, gdzie jesteśmy
-      - name: Check location
-        run: |
-          echo "🤖 Agent działa jako użytkownik: $(whoami)"
-          echo "📂 Ścieżka robocza: /home/bartosz/animalLogic"
 
-      # Krok 1: Przejdź do folderu i zaktualizuj kod
+      - name: Check location + system stats (BEFORE)
+        run: |
+          echo "🤖 Agent user: $(whoami)"
+          echo "📂 Working dir: /home/bartosz/animalLogic"
+          echo "⏱️ Uptime:"
+          uptime
+          echo "🧠 RAM:"
+          free -h
+          echo "💾 Disk:"
+          df -h
+          echo "🐳 Docker stats:"
+          docker stats --no-stream || true
+
       - name: Pull latest code
         run: |
           cd /home/bartosz/animalLogic
-          
-          echo "🔄 Pobieranie zmian z GitHuba..."
-          # Fetch i Reset Hard gwarantują, że kod będzie 1:1 jak na GitHubie
+          echo "🔄 Pulling code..."
           git fetch origin
           git reset --hard origin/main
 
-      # Krok 2: Przebuduj kontenery (Build)
       - name: Rebuild Docker Containers
         run: |
           cd /home/bartosz/animalLogic
-          
-          echo "🐳 Restartowanie kontenerów..."
-          # Down usuwa stare, Up --build tworzy nowe
+          echo "🐳 Restarting containers..."
           docker compose down
           docker compose up -d --build
 
-      # Krok 3: Migracja bazy danych
       - name: Migrate Database
         run: |
           cd /home/bartosz/animalLogic
-          
-          echo "🗄️ Aktualizacja bazy danych..."
-          # Wykonaj migracje wewnątrz kontenera 'web'
+          echo "🗄️ Running migrations..."
           docker compose exec -T web python manage.py migrate
 
-      # Krok 4: Pliki statyczne (CSS/JS)
       - name: Collect Static Files
         run: |
           cd /home/bartosz/animalLogic
-          
-          echo "🎨 Zbieranie plików statycznych..."
+          echo "🎨 Collecting static..."
           docker compose exec -T web python manage.py collectstatic --noinput
+
+      - name: System stats (AFTER)
+        run: |
+          echo "⏱️ Uptime:"
+          uptime
+          echo "🧠 RAM:"
+          free -h
+          echo "💾 Disk:"
+          df -h
+          echo "🐳 Docker stats:"
+          docker stats --no-stream || true
 
       - name: Success Message
         run: echo "✅ Wdrożenie zakończone sukcesem! Strona powinna działać."
