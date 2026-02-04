@@ -10,18 +10,17 @@ services:
     # Optymalizacja: Więcej połączeń (500) i większy bufor pamięci
     command: postgres -c 'max_connections=500' -c 'shared_buffers=256MB'
     volumes:
-      # Nowy wolumen = Czysty start (brak starych, uszkodzonych plików)
+      # Nowy wolumen = Czysty start
       - postgres_data_final_fix:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: animallogic
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: cokolwiek_bo_jest_trust
-      # KLUCZOWE: Wyłącza sprawdzanie hasła wewnątrz sieci Docker.
-      # Eliminuje błędy "Authentication failed" przy dużym obciążeniu.
+      POSTGRES_PASSWORD: admin123
+      # Pozwala na łączenie bez hasła wewnątrz sieci (eliminuje błędy auth przy obciążeniu),
+      # ale ustawiliśmy też hasło wyżej dla pewności.
       POSTGRES_HOST_AUTH_METHOD: trust
     restart: always
     healthcheck:
-      # Sprawdza czy baza 'animallogic' jest gotowa (a nie domyślna 'admin')
       test: ["CMD-SHELL", "pg_isready -U admin -d animallogic"]
       interval: 5s
       timeout: 5s
@@ -32,10 +31,12 @@ services:
   # ==========================================
   web:
     build: .
-    # KLUCZOWE DLA WYDAJNOŚCI:
-    # Używamy Gunicorn z 4 workerami (procesami).
-    # To pozwala obsłużyć 4-8 zapytań RÓWNOLEGLE, zamiast jednego po drugim.
-    command: bash -c "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 8"
+    # Komenda startowa:
+    # 1. Tworzy folder na sesje (jeśli użyjesz plików)
+    # 2. Zbiera pliki statyczne
+    # 3. Robi migracje
+    # 4. Odpala Gunicorn (2 procesy, po 8 wątków każdy - optymalne dla RPi/API)
+    command: bash -c "mkdir -p /app/session_data && python manage.py collectstatic --noinput && python manage.py migrate && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 8"
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
@@ -44,15 +45,15 @@ services:
     environment:
       - SECRET_KEY=twoj_klucz_zmien_go_na_produkcji
       - DEBUG=1
-      # Lista hostów
-      - ALLOWED_HOSTS=localhost,127.0.0.1,animal.zipit.pl,www.animal.zipit.pl,web,db
+      # Wpuszczamy wszystkich (ważne przy DEBUG=0)
+      - ALLOWED_HOSTS=*
       # Konfiguracja Bazy
       - DB_ENGINE=django.db.backends.postgresql
       - DB_NAME=animallogic
       - DB_USER=admin
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_PASSWORD=cokolwiek  # Ignorowane przez tryb 'trust' w bazie
+      - DB_PASSWORD=admin123
     depends_on:
       db:
         condition: service_healthy
@@ -82,6 +83,43 @@ services:
     depends_on:
       - nginx
 
+  # ==========================================
+  # MONITORING (Dozzle - Logi)
+  # ==========================================
+  dozzle:
+    image: amir20/dozzle:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8888:8080"
+    restart: always
+
+  # ==========================================
+  # MONITORING (Netdata - Wykresy CPU/RAM)
+  # ==========================================
+  netdata:
+    image: netdata/netdata
+    container_name: netdata
+    pid: host
+    network_mode: host
+    restart: always
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdatalib:/var/lib/netdata
+      - netdatacache:/var/cache/netdata
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
 volumes:
   postgres_data_final_fix:
   static_volume:
+  netdatalib:
+  netdatacache:
