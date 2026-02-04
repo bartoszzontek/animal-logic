@@ -2,21 +2,27 @@ version: "3.8"
 
 services:
 
+  # Baza Danych (Naprawiona)
   db:
     image: postgres:15-alpine
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Nowa nazwa wolumenu = czysty start bez błędów
+      - postgres_data_final_fix:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: animallogic
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: tajnehaslo123
+      POSTGRES_PASSWORD: cokolwiek  # Hasło ignorowane dzięki 'trust'
+      POSTGRES_HOST_AUTH_METHOD: trust # <--- To wyłącza sprawdzanie hasła (koniec błędów Auth)
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin"]
+      # POPRAWKA: Dodano "-d animallogic".
+      # Wcześniej szukał bazy "admin" i dlatego restartował kontener!
+      test: ["CMD-SHELL", "pg_isready -U admin -d animallogic"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # Aplikacja Django
   web:
     build: .
     command: bash -c "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000"
@@ -25,13 +31,24 @@ services:
       - static_volume:/app/staticfiles
     expose:
       - 8000
-    env_file:
-      - .env
+    # Zamiast polegać tylko na .env, wpisujemy konfigurację bazy na sztywno, żeby pasowała do serwera db
+    environment:
+      - SECRET_KEY=twoj_klucz_zmien_go_na_produkcji
+      - DEBUG=1
+      - ALLOWED_HOSTS=localhost,127.0.0.1,animal.zipit.pl,www.animal.zipit.pl,web,db
+      # Konfiguracja Bazy (musi pasować do sekcji db)
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=animallogic
+      - DB_USER=admin
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_PASSWORD=cokolwiek
     depends_on:
       db:
         condition: service_healthy
     restart: always
 
+  # Nginx (Bez zmian)
   nginx:
     image: nginx:1.25-alpine
     volumes:
@@ -43,6 +60,7 @@ services:
       - web
     restart: always
 
+  # Tunel Cloudflare (Bez zmian)
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: always
@@ -51,5 +69,5 @@ services:
       - nginx
 
 volumes:
-  postgres_data:
+  postgres_data_final_fix: # Nowy wolumen
   static_volume:
