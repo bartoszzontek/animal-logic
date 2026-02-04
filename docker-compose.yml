@@ -43,7 +43,7 @@ services:
       - 8000
     environment:
       - SECRET_KEY=twoj_klucz_zmien_go_na_produkcji
-      - DEBUG=1
+      - DEBUG=0
       # Lista hostów
       - ALLOWED_HOSTS=localhost,127.0.0.1,animal.zipit.pl,www.animal.zipit.pl,web,db
       # Konfiguracja Bazy
