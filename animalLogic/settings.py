@@ -8,15 +8,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-123')
 
 DEBUG = int(os.environ.get('DEBUG', 1))
+
+# --- FIX WYDAJNOŚCI DLA RASPBERRY PI (MD5) ---
+# To jest KLUCZOWE dla płynnego logowania na RPi.
+# Zmienia algorytm na MD5 (szybki) zamiast domyślnego PBKDF2 (wolny i obciążający CPU).
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+]
+
 # --- CLOUDFLARE FIX ---
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
+
 # Wyloguj użytkownika po zamknięciu przeglądarki
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
-# Opcjonalnie: Twardy limit czasu sesji (np. 1 godzina = 3600 sekund)
-# Po tym czasie wyloguje nawet jak przeglądarka jest otwarta
+# Opcjonalnie: Twardy limit czasu sesji (1 godzina)
 SESSION_COOKIE_AGE = 3600
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
@@ -75,6 +86,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'animalLogic.wsgi.application'
 
+# Konfiguracja Bazy Danych
 if os.environ.get('DB_ENGINE') == 'django.db.backends.postgresql':
     DATABASES = {
         'default': {
@@ -87,6 +99,7 @@ if os.environ.get('DB_ENGINE') == 'django.db.backends.postgresql':
         }
     }
 else:
+    # Fallback na SQLite (gdyby Postgres nie zadziałał lokalnie)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -114,13 +127,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'system@animallogic.pl'
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Token dla czujników
 SENSOR_API_TOKEN = "dI-Fdlp40BeaJWzaEPBPnHh0afiz_5EvKaOqjZGgeYc"
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
 
+# Konfiguracja Unfold Admin
 UNFOLD = {
     "SITE_TITLE": "Animal Logic Admin",
     "SITE_HEADER": "Animal Logic",
