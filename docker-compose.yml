@@ -35,7 +35,7 @@ services:
     # KLUCZOWE DLA WYDAJNOŚCI:
     # Używamy Gunicorn z 4 workerami (procesami).
     # To pozwala obsłużyć 4-8 zapytań RÓWNOLEGLE, zamiast jednego po drugim.
-    command: bash -c "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2"
+    command: bash -c "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 8"
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
@@ -43,7 +43,7 @@ services:
       - 8000
     environment:
       - SECRET_KEY=twoj_klucz_zmien_go_na_produkcji
-      - DEBUG=0
+      - DEBUG=1
       # Lista hostów
       - ALLOWED_HOSTS=localhost,127.0.0.1,animal.zipit.pl,www.animal.zipit.pl,web,db
       # Konfiguracja Bazy
