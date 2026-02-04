@@ -2,54 +2,65 @@ version: "3.8"
 
 services:
 
-  # Baza Danych (Naprawiona)
+  # ==========================================
+  # BAZA DANYCH (Postgres)
+  # ==========================================
   db:
     image: postgres:15-alpine
+    # Optymalizacja: Więcej połączeń (500) i większy bufor pamięci
     command: postgres -c 'max_connections=500' -c 'shared_buffers=256MB'
     volumes:
-      # Nowa nazwa wolumenu = czysty start bez błędów
+      # Nowy wolumen = Czysty start (brak starych, uszkodzonych plików)
       - postgres_data_final_fix:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: animallogic
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: cokolwiek  # Hasło ignorowane dzięki 'trust'
-      POSTGRES_HOST_AUTH_METHOD: trust # <--- To wyłącza sprawdzanie hasła (koniec błędów Auth)
+      POSTGRES_PASSWORD: cokolwiek_bo_jest_trust
+      # KLUCZOWE: Wyłącza sprawdzanie hasła wewnątrz sieci Docker.
+      # Eliminuje błędy "Authentication failed" przy dużym obciążeniu.
+      POSTGRES_HOST_AUTH_METHOD: trust
     restart: always
     healthcheck:
-      # POPRAWKA: Dodano "-d animallogic".
-      # Wcześniej szukał bazy "admin" i dlatego restartował kontener!
+      # Sprawdza czy baza 'animallogic' jest gotowa (a nie domyślna 'admin')
       test: ["CMD-SHELL", "pg_isready -U admin -d animallogic"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # Aplikacja Django
+  # ==========================================
+  # APLIKACJA (Django + Gunicorn)
+  # ==========================================
   web:
     build: .
-    command: bash -c "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000"
+    # KLUCZOWE DLA WYDAJNOŚCI:
+    # Używamy Gunicorn z 4 workerami (procesami).
+    # To pozwala obsłużyć 4-8 zapytań RÓWNOLEGLE, zamiast jednego po drugim.
+    command: bash -c "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn animalLogic.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2"
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
     expose:
       - 8000
-    # Zamiast polegać tylko na .env, wpisujemy konfigurację bazy na sztywno, żeby pasowała do serwera db
     environment:
       - SECRET_KEY=twoj_klucz_zmien_go_na_produkcji
       - DEBUG=1
+      # Lista hostów
       - ALLOWED_HOSTS=localhost,127.0.0.1,animal.zipit.pl,www.animal.zipit.pl,web,db
-      # Konfiguracja Bazy (musi pasować do sekcji db)
+      # Konfiguracja Bazy
       - DB_ENGINE=django.db.backends.postgresql
       - DB_NAME=animallogic
       - DB_USER=admin
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_PASSWORD=tajnehaslo123
+      - DB_PASSWORD=cokolwiek  # Ignorowane przez tryb 'trust' w bazie
     depends_on:
       db:
         condition: service_healthy
     restart: always
 
-  # Nginx (Bez zmian)
+  # ==========================================
+  # SERWER WWW (Nginx)
+  # ==========================================
   nginx:
     image: nginx:1.25-alpine
     volumes:
@@ -61,7 +72,9 @@ services:
       - web
     restart: always
 
-  # Tunel Cloudflare (Bez zmian)
+  # ==========================================
+  # TUNEL (Cloudflare)
+  # ==========================================
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: always
@@ -70,5 +83,5 @@ services:
       - nginx
 
 volumes:
-  postgres_data_final_fix: # Nowy wolumen
+  postgres_data_final_fix:
   static_volume:
