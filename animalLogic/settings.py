@@ -4,7 +4,7 @@ from django.urls import reverse_lazy
 from django.templatetags.static import static
 
 # =========================================================
-# PODSTAWOWA KONFIGURACJA  kjss
+# PODSTAWOWA KONFIGURACJA  kjsssss
 # =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
