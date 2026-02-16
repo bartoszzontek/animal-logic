@@ -18,7 +18,7 @@ jobs:
       - name: Check location + system stats (BEFORE)
         run: |
           echo "🤖 Agent user: $(whoami)"
-          echo "📂 Working dir: /home/bartosz/animalLogic"
+          echo "📂 Working dir: /home/bartosz/animal-logic"
           echo "⏱️ Uptime:"
           uptime
           echo "🧠 RAM:"
@@ -30,27 +30,27 @@ jobs:
 
       - name: Pull latest code
         run: |
-          cd /home/bartosz/animalLogic
+          cd /home/bartosz/animal-logic
           echo "🔄 Pulling code..."
           git fetch origin
           git reset --hard origin/main
 
       - name: Rebuild Docker Containers
         run: |
-          cd /home/bartosz/animalLogic
+          cd /home/bartosz/animal-logic
           echo "🐳 Restarting containers..."
           docker compose down
           docker compose up -d --build
 
       - name: Migrate Database
         run: |
-          cd /home/bartosz/animalLogic
+          cd /home/bartosz/animal-logic
           echo "🗄️ Running migrations..."
           docker compose exec -T web python manage.py migrate
 
       - name: Collect Static Files
         run: |
-          cd /home/bartosz/animalLogic
+          cd /home/bartosz/animal-logic
           echo "🎨 Collecting static..."
           docker compose exec -T web python manage.py collectstatic --noinput
 
