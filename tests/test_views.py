@@ -270,7 +270,7 @@ from django.contrib.auth.models import User
 def test_switch_light_mode(client, user, terrarium):
     """
     Testuje nowy przycisk zmiany trybu (Auto <-> Manual).
-    Endpoint: switch_light_mode
+    Endpoint: switch_lightwww_mode
     """
     client.force_login(user)
 
