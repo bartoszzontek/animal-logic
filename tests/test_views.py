@@ -160,10 +160,14 @@ def test_save_settings_view(client, user, terrarium):
         'mist_duration': 10,
         'mist_mode': 'harmonogram',
         'light_mode': 'auto',
-        'mist_enabled': 'on',  # Checkbox wysyła 'on'
+        'mist_enabled': 'on',
         'alert_min_temp': 15.0,
         'alert_max_temp': 35.0,
-        'alerts_enabled': 'on'
+        'alerts_enabled': 'on',
+        # --- DODAJEMY ZABEZPIECZENIE DLA NOWYCH PÓL ---
+        'mist_d1': 15, 'mist_d2': 15, 'mist_d3': 15, 'mist_d4': 15,
+        'mist_d5': 15, 'mist_d6': 15, 'mist_d7': 15, 'mist_d8': 15,
+        'mist_d9': 15, 'mist_d10': 15, 'mist_d11': 15, 'mist_d12': 15,
     }
 
     response = client.post(url, data)
