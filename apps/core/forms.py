@@ -3,14 +3,13 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import check_password
 from .models import Terrarium, AllowedDevice
 
-
 class RegisterForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, label="Hasło")
     confirm_password = forms.CharField(widget=forms.PasswordInput, label="Powtórz hasło")
 
     class Meta:
         model = User
-        fields = ['username', 'email']  # <--- WAŻNE: Dodano email przy rejestracji
+        fields = ['username', 'email']
 
     def clean(self):
         cleaned_data = super().clean()
@@ -51,12 +50,18 @@ class TerrariumSettingsForm(forms.ModelForm):
             'temp_day', 'temp_night',
             'light_start', 'light_end', 'light_mode',
             'mist_enabled', 'mist_mode', 'mist_duration', 'mist_min_humidity',
-            'alerts_enabled', 'alert_min_temp', 'alert_max_temp', 'alert_email'
+            'alerts_enabled', 'alert_min_temp', 'alert_max_temp', 'alert_email',
+            'mist_h1', 'mist_d1', 'mist_h2', 'mist_d2', 'mist_h3', 'mist_d3',
+            'mist_h4', 'mist_d4', 'mist_h5', 'mist_d5', 'mist_h6', 'mist_d6',
+            'mist_h7', 'mist_d7', 'mist_h8', 'mist_d8', 'mist_h9', 'mist_d9',
+            'mist_h10', 'mist_d10', 'mist_h11', 'mist_d11', 'mist_h12', 'mist_d12'
         ]
-    def clean(self):
-            cleaned_data = super().clean()
-            min_t = cleaned_data.get("alert_min_temp")
-            max_t = cleaned_data.get("alert_max_temp")
 
-            if min_t and max_t and min_t >= max_t:
-                raise forms.ValidationError("Minimalna temperatura alarmu musi być niższa niż maksymalna!")
+    def clean(self):
+        cleaned_data = super().clean()
+        min_t = cleaned_data.get("alert_min_temp")
+        max_t = cleaned_data.get("alert_max_temp")
+
+        if min_t and max_t and min_t >= max_t:
+            raise forms.ValidationError("Minimalna temperatura alarmu musi być niższa niż maksymalna!")
+        return cleaned_data

@@ -175,29 +175,58 @@
             </fieldset>
 
             <fieldset class="settings-group">
-                <legend>💧 System Zraszania</legend>
-                <div class="checkbox-row">
-                    <input type="checkbox" id="mist_enabled" name="mist_enabled" {% if settings.mist_enabled %}checked{% endif %}>
-                    <label for="mist_enabled">System Aktywny</label>
-                </div>
-                <div class="grid-2" style="margin-top: 10px;">
-                    <div>
-                        <label>Tryb</label>
-                        <select name="mist_mode" class="dark-input">
-                            <option value="auto" {% if settings.mist_mode == 'auto' %}selected{% endif %}>Auto (Higrostat)</option>
-                            <option value="harmonogram" {% if settings.mist_mode == 'harmonogram' %}selected{% endif %}>Harmonogram</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Czas trwania (sek)</label>
-                        <input type="number" name="mist_duration" value="{{ settings.mist_duration }}" class="dark-input">
-                    </div>
-                </div>
-                <div style="margin-top: 10px;">
-                    <label>Min. Wilgotność (%)</label>
-                    <input type="number" name="mist_min_humidity" value="{{ settings.mist_min_humidity }}" class="dark-input">
-                </div>
-            </fieldset>
+    <legend>💧 System Zraszania</legend>
+    <div class="checkbox-row">
+        <input type="checkbox" id="mist_enabled" name="mist_enabled" {% if settings.mist_enabled %}checked{% endif %}>
+        <label for="mist_enabled">System Aktywny</label>
+    </div>
+    <div class="grid-2" style="margin-top: 10px;">
+        <div>
+            <label>Tryb</label>
+            <select name="mist_mode" id="mist_mode_select" class="dark-input">
+                <option value="auto" {% if settings.mist_mode == 'auto' %}selected{% endif %}>Auto (Higrostat)</option>
+                <option value="harmonogram" {% if settings.mist_mode == 'harmonogram' %}selected{% endif %}>Harmonogram</option>
+            </select>
+        </div>
+        <div id="global_mist_duration">
+            <label>Czas trwania w Auto (sek)</label>
+            <input type="number" name="mist_duration" value="{{ settings.mist_duration }}" class="dark-input">
+        </div>
+    </div>
+
+    <div id="mist_auto_settings" style="margin-top: 10px;">
+        <label>Min. Wilgotność (%)</label>
+        <input type="number" name="mist_min_humidity" value="{{ settings.mist_min_humidity }}" class="dark-input">
+    </div>
+
+    <div id="harmonogram_slots" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; display: none;">
+        <label style="color: var(--primary); font-weight: bold; margin-bottom: 10px; display: block;">Godziny zraszania i czas (sek)</label>
+
+        <div style="max-height: 250px; overflow-y: auto; padding-right: 10px;">
+            <style>
+                .slot-grid { display: grid; grid-template-columns: 30px 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 8px; }
+            </style>
+
+            <div style="max-height: 250px; overflow-y: auto; padding-right: 10px;">
+            <style>
+                .slot-grid { display: grid; grid-template-columns: 30px 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 8px; }
+            </style>
+
+            <div class="slot-grid"><span style="color: #888;">#1</span><input type="time" name="mist_h1" value="{{ settings.mist_h1|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d1" value="{{ settings.mist_d1 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#2</span><input type="time" name="mist_h2" value="{{ settings.mist_h2|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d2" value="{{ settings.mist_d2 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#3</span><input type="time" name="mist_h3" value="{{ settings.mist_h3|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d3" value="{{ settings.mist_d3 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#4</span><input type="time" name="mist_h4" value="{{ settings.mist_h4|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d4" value="{{ settings.mist_d4 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#5</span><input type="time" name="mist_h5" value="{{ settings.mist_h5|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d5" value="{{ settings.mist_d5 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#6</span><input type="time" name="mist_h6" value="{{ settings.mist_h6|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d6" value="{{ settings.mist_d6 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#7</span><input type="time" name="mist_h7" value="{{ settings.mist_h7|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d7" value="{{ settings.mist_d7 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#8</span><input type="time" name="mist_h8" value="{{ settings.mist_h8|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d8" value="{{ settings.mist_d8 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#9</span><input type="time" name="mist_h9" value="{{ settings.mist_h9|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d9" value="{{ settings.mist_d9 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#10</span><input type="time" name="mist_h10" value="{{ settings.mist_h10|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d10" value="{{ settings.mist_d10 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#11</span><input type="time" name="mist_h11" value="{{ settings.mist_h11|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d11" value="{{ settings.mist_d11 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+            <div class="slot-grid"><span style="color: #888;">#12</span><input type="time" name="mist_h12" value="{{ settings.mist_h12|time:'H:i' }}" class="dark-input" style="margin:0;"><input type="number" name="mist_d12" value="{{ settings.mist_d12 }}" placeholder="Sekundy" class="dark-input" style="margin:0;"></div>
+        </div>
+    </div>
+</fieldset>
 
             <fieldset class="settings-group" style="border-color: var(--danger);">
                 <legend style="color: var(--danger);">⚠️ Alerty Bezpieczeństwa</legend>
@@ -516,5 +545,28 @@
 
     // Odświeżaj co 3 sekundy
     setInterval(refreshDashboard, 3000);
+
+    // Obsługa widoczności Harmonogramu vs Auto
+    const mistModeSelect = document.getElementById('mist_mode_select');
+    const harmonogramSlots = document.getElementById('harmonogram_slots');
+    const autoSettings = document.getElementById('mist_auto_settings');
+    const globalMistDuration = document.getElementById('global_mist_duration');
+
+    function toggleMistSettings() {
+        if(mistModeSelect.value === 'harmonogram') {
+            harmonogramSlots.style.display = 'block';
+            autoSettings.style.display = 'none';
+            globalMistDuration.style.display = 'none';
+        } else {
+            harmonogramSlots.style.display = 'none';
+            autoSettings.style.display = 'block';
+            globalMistDuration.style.display = 'block';
+        }
+    }
+
+    if (mistModeSelect) {
+        mistModeSelect.addEventListener('change', toggleMistSettings);
+        toggleMistSettings(); // Wywołaj przy starcie, aby ustawić poprawny widok
+    }
 </script>
 {% endblock %}

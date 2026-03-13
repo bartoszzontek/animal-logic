@@ -10,7 +10,7 @@ import sys
 BASE_URL = "http://127.0.0.1:8000/api"
 
 # Dane urządzenia (muszą istnieć w bazie admina!)
-DEVICE_ID = "A1001"
+DEVICE_ID = "TEST01"
 DEVICE_PIN = "1234"
 
 # Fizyka symulacji

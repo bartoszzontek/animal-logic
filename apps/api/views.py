@@ -1,3 +1,4 @@
+# apps/api/views.py
 import os
 import json
 from datetime import timedelta
@@ -45,7 +46,7 @@ def download_firmware(request, filename):
     # NAPRAWA: Jeśli plik nie jest na liście, udajemy że go nie ma (404)
     # zamiast krzyczeć "Zabronione" (403). To naprawia test.
     if filename not in allowed_files:
-        raise Http404("Firmware not found")  # Było HttpResponse(..., 403)
+        raise Http404("Firmware not found")
 
     file_path = os.path.join(settings.BASE_DIR, 'firmware', filename)
 
@@ -156,7 +157,7 @@ class IoTUpdateView(View):
             now = timezone.localtime()
             now_time = now.time()
 
-            # --- D.1 ALERTY (Naprawione wcięcia!) ---
+            # --- D.1 ALERTY ---
             if device.alerts_enabled and device.alert_email:
                 cooldown = True
                 if device.last_alert_sent and (timezone.now() - device.last_alert_sent < timedelta(minutes=15)):
@@ -165,7 +166,6 @@ class IoTUpdateView(View):
                 if cooldown:
                     subject = ""
                     should_send = False
-                    # Format pod testy:
                     if temp > device.alert_max_temp:
                         should_send = True
                         subject = f"ALARM: {device.name} - Wysoka Temperatura!"
@@ -205,8 +205,10 @@ class IoTUpdateView(View):
             else:
                 cmd_heat = real_heat
 
-            # --- D.4 ZRASZANIE ---
+            # --- D.4 ZRASZANIE (Zaktualizowane dla 12 slotów i czasu trwania) ---
             cmd_mist = False
+            current_mist_duration = device.mist_duration # Domyślny czas dla trybu Auto
+
             if device.mist_enabled:
                 if device.mist_mode == 'auto':
                     if hum < device.mist_min_humidity:
@@ -218,27 +220,33 @@ class IoTUpdateView(View):
                 else:
                     # Harmonogram
                     current_hm = now_time.strftime("%H:%M")
-                    timers = [device.mist_h1, device.mist_h2, device.mist_h3, device.mist_h4]
-                    for t in timers:
-                        if t and t.strftime("%H:%M") == current_hm:
+                    timers = [
+                        (device.mist_h1, device.mist_d1), (device.mist_h2, device.mist_d2),
+                        (device.mist_h3, device.mist_d3), (device.mist_h4, device.mist_d4),
+                        (device.mist_h5, device.mist_d5), (device.mist_h6, device.mist_d6),
+                        (device.mist_h7, device.mist_d7), (device.mist_h8, device.mist_d8),
+                        (device.mist_h9, device.mist_d9), (device.mist_h10, device.mist_d10),
+                        (device.mist_h11, device.mist_d11), (device.mist_h12, device.mist_d12),
+                    ]
+                    for t_val, d_val in timers:
+                        if t_val and t_val.strftime("%H:%M") == current_hm:
                             cmd_mist = True
+                            current_mist_duration = d_val
+                            break
 
-                        # --- E. OBSŁUGA OTA (NOWOŚĆ) ---
+            # --- E. OBSŁUGA OTA ---
             cmd_ota = False
-
-             # Sprawdzamy, czy użytkownik kliknął przycisk w Dashboardzie
             if device.update_required:
-                cmd_ota = True  # 1. Wysyłamy rozkaz "START UPDATE"
-                device.update_required = False  # 2. Opuszczamy flagę (żeby nie robił pętli aktualizacji)
+                cmd_ota = True
+                device.update_required = False
                 device.save()
 
-
-
-            # --- E. ODPOWIEDŹ (Teraz jest poza pętlą!) ---
+            # --- F. ODPOWIEDŹ ---
             return JsonResponse({
                 'status': 'ok',
                 'heater': cmd_heat,
                 'mist': cmd_mist,
+                'mist_duration': current_mist_duration, # <-- Nowy klucz JSON
                 'light': cmd_light,
                 'ota': cmd_ota,
                 'target': target_temp,
@@ -251,9 +259,7 @@ class IoTUpdateView(View):
 
 
 # =========================================================
-# MAGICZNE WRAPPERY DLA TESTÓW (BARDZO WAŻNE)
+# MAGICZNE WRAPPERY DLA TESTÓW
 # =========================================================
-# Dzięki temu testy widzą api_sensor_update jako funkcję,
-# mimo że to jest klasa.
 api_sensor_update = csrf_exempt(IoTUpdateView.as_view())
 api_device_auth = csrf_exempt(DeviceAuthView.as_view())

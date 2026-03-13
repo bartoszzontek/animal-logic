@@ -50,14 +50,34 @@ class Terrarium(models.Model):
     mist_enabled = models.BooleanField(default=True)
     mist_mode = models.CharField(max_length=20, default='harmonogram',
                                  choices=[('harmonogram', 'Harmonogram'), ('auto', 'Auto')])
-    mist_duration = models.IntegerField(default=10, help_text="Czas zraszania w sekundach")
+    mist_duration = models.IntegerField(default=10, help_text="Globalny czas zraszania w sekundach (dla trybu Auto)")
     mist_min_humidity = models.IntegerField(default=60, verbose_name="Min Wilgotność %")
 
-    # Harmonogram zraszania (opcjonalny)
-    mist_h1 = models.TimeField(null=True, blank=True)
-    mist_h2 = models.TimeField(null=True, blank=True)
-    mist_h3 = models.TimeField(null=True, blank=True)
-    mist_h4 = models.TimeField(null=True, blank=True)
+    # Harmonogram zraszania (12 slotów: godzina i czas trwania w sekundach)
+    mist_h1 = models.TimeField(null=True, blank=True);
+    mist_d1 = models.IntegerField(default=0)
+    mist_h2 = models.TimeField(null=True, blank=True);
+    mist_d2 = models.IntegerField(default=0)
+    mist_h3 = models.TimeField(null=True, blank=True);
+    mist_d3 = models.IntegerField(default=0)
+    mist_h4 = models.TimeField(null=True, blank=True);
+    mist_d4 = models.IntegerField(default=0)
+    mist_h5 = models.TimeField(null=True, blank=True);
+    mist_d5 = models.IntegerField(default=0)
+    mist_h6 = models.TimeField(null=True, blank=True);
+    mist_d6 = models.IntegerField(default=0)
+    mist_h7 = models.TimeField(null=True, blank=True);
+    mist_d7 = models.IntegerField(default=0)
+    mist_h8 = models.TimeField(null=True, blank=True);
+    mist_d8 = models.IntegerField(default=0)
+    mist_h9 = models.TimeField(null=True, blank=True);
+    mist_d9 = models.IntegerField(default=0)
+    mist_h10 = models.TimeField(null=True, blank=True);
+    mist_d10 = models.IntegerField(default=0)
+    mist_h11 = models.TimeField(null=True, blank=True);
+    mist_d11 = models.IntegerField(default=0)
+    mist_h12 = models.TimeField(null=True, blank=True);
+    mist_d12 = models.IntegerField(default=0)
 
     # Status Online
     last_seen = models.DateTimeField(null=True, blank=True)
